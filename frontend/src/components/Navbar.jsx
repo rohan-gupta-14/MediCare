@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import { navbarStyles } from '../assets/dummyStyles';
 import logo from '../assets/logo.png';
 import { useClerk } from '@clerk/react';
+import { User } from 'lucide-react'
 
 const STORAGE_KEY = "doctorToken_v1";
 
@@ -21,7 +22,7 @@ const Navbar = () => {
   const navRef = useRef(null);
   const clerk = useClerk();
   const navigate = useNavigate();
-  
+
   const navItems = [
     { label: "Home", href: "/" },
     { label: "Doctors", href: "/doctors" },
@@ -54,18 +55,54 @@ const Navbar = () => {
             </Link>
             <div className={navbarStyles.desktopNav}>
               <div className={navbarStyles.navItemsContainer}>
-                {navItems.map((item)=> {
+                {navItems.map((item) => {
                   const isActive = location.pathname === item.href;
-                  return(
+                  return (
                     <Link key={item.href} to={item.href}
-                    className={`${navbarStyles.navItem} ${
-                      isActive ? navbarStyles.navItemActive : navbarStyles.navItemInactive
-                    }`}>
+                      className={`${navbarStyles.navItem} ${isActive ? navbarStyles.navItemActive : navbarStyles.navItemInactive
+                        }`}>
                       {item.label}
                     </Link>
                   )
                 })}
               </div>
+            </div>
+            {/* right side */}
+            <div className={navbarStyles.rightContainer}>
+              <SignedOut>
+                <Link
+                  to="/doctor-admin/login"
+                  className={navbarStyles.doctorAdminButton}
+                >
+                  <User className={navbarStyles.doctorAdminIcon} />
+                  <span className={navbarStyles.doctorAdminText}>
+                    Doctor Admin
+                  </span>
+                </Link>
+                {/* patient login */}
+                <button
+                  onClick={() => clerk.openSignIn()}
+                  className={navbarStyles.loginButton}
+                >
+                  <Key className={navbarStyles.loginIcon} />
+                  Login
+                </button>
+              </SignedOut>
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+
+              {/* to toggle */}
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={navbarStyles.mobileToggle}
+              >
+                {isOpen ? (
+                  <X className={navbarStyles.toggleIcon} />
+                ) : (
+                  <Menu className={navbarStyles.toggleIcon} />
+                )}
+              </button>
             </div>
           </div>
         </div>
