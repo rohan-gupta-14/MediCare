@@ -1,0 +1,14 @@
+// controllers/index.js
+// Controllers are added per phase:
+// Phase 06: auth.controller.js
+// Phase 11: patient.controller.js
+// Phase 13: doctor.controller.js
+// Phase 15: department.controller.js
+// Phase 16: appointment.controller.js
+// Phase 21: medicalRecord.controller.js
+// Phase 23: prescription.controller.js
+// Phase 25: medicine.controller.js
+// Phase 28: labTest.controller.js
+// Phase 30: ward.controller.js
+// Phase 33: invoice.controller.js
+// Phase 38: notification.controller.js
