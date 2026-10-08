@@ -1,5 +1,5 @@
 /**
- * AuthContext — placeholder for Phase 07
+ * AuthContext — React context for authentication state
  *
  * This context will hold:
  * - currentUser (the logged-in user object)
@@ -8,13 +8,15 @@
  * - isAuthenticated
  * - role-based helpers
  *
- * Full implementation in Phase 07.
+ * Consume it via: import useAuth from '../hooks/useAuth';
+ * (useAuth lives in its own file so this .jsx file only exports
+ * components/context — required by the react-refresh ESLint rule.)
+ *
+ * AuthProvider component: full implementation in Phase 07.
  */
 
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 
 const AuthContext = createContext(null);
-
-export const useAuth = () => useContext(AuthContext);
 
 export default AuthContext;

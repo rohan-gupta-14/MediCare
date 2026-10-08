@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import MainLayout from './layouts/MainLayout';
 
 // ────────────────────────────────────────────────
 // Routes will expand across Phases 07 – 44.
