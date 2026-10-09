@@ -1,11 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const connectDB = require('./config/db');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+
+// Human-readable MongoDB ready states (mongoose.connection.readyState)
+const DB_STATES = {
+  0: 'disconnected',
+  1: 'connected',
+  2: 'connecting',
+  3: 'disconnecting',
+};
 
 // ──────────────────────────────────────────────
 // Middleware
@@ -18,12 +28,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ──────────────────────────────────────────────
-// Health Check
+// Health Check (includes database status)
 // ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
+  const dbState = mongoose.connection.readyState;
+
   res.json({
     success: true,
     message: 'MediCare API is running',
+    database: DB_STATES[dbState] || 'unknown',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });
@@ -67,14 +80,32 @@ app.use((err, req, res, next) => {
 });
 
 // ──────────────────────────────────────────────
-// Start server
+// Start server (after DB connection attempt)
 // ──────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`✅ MediCare API running on http://localhost:${PORT}`);
-  console.log(`🌿 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`❤️  Health check: http://localhost:${PORT}/api/health`);
-});
+const startServer = async () => {
+  const dbConnected = await connectDB();
+
+  // Production must never run without a database
+  if (!dbConnected && process.env.NODE_ENV === 'production') {
+    console.error('❌ Startup aborted: database connection failed in production.');
+    process.exit(1);
+  }
+
+  // In development we still boot so the API/health check remain testable
+  if (!dbConnected) {
+    console.warn('⚠️  Starting WITHOUT database — data features (Phase 05+) will fail until MONGO_URI is set.');
+  }
+
+  app.listen(PORT, () => {
+    console.log(`✅ MediCare API running on http://localhost:${PORT}`);
+    console.log(`🌿 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🗄️  Database: ${DB_STATES[mongoose.connection.readyState]}`);
+    console.log(`❤️  Health check: http://localhost:${PORT}/api/health`);
+  });
+};
+
+startServer();
 
 module.exports = app;
