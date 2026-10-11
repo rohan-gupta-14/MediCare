@@ -2,6 +2,23 @@
 
 > Living document. Updated as phases complete.
 
+## 📍 Resume Point (end of session 2026-10-11)
+
+- **Completed:** Phases 01–05 (audit, cleanup, env config, MongoDB connection, User model).
+- **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
+  (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
+  `/api/health` returns `"database":"connected"`; failure paths tested too.
+- **Phase 05 verified live:** `backend/models/User.model.js` — schema validation (name/email/
+  password/role/phone), bcryptjs (12 rounds) hashing on save **and** findOneAndUpdate,
+  `matchPassword()`, `toJSON()` strips password, password `select: false`, unique lowercased
+  email (`email_1` index confirmed in DB), roles enum + default `patient`, timestamps.
+  Verified with a 22-assertion script against the local DB (temp script removed after run).
+- **Uncommitted:** `backend/models/User.model.js`, `ARCHITECTURE.md`
+  — waiting on user commit: `git add . && git commit -m "feat: add user authentication model" && git push origin main`.
+- **Next: PHASE 06 — Backend Authentication** (`POST /api/auth/register`, `POST /api/auth/login`,
+  `GET /api/auth/me`): routes + controllers + `auth.middleware.js` protect() using JWT_SECRET/
+  JWT_EXPIRES, validation, never return passwords; commit: `feat: implement JWT authentication`.
+
 ## 1. High-Level Structure
 
 ```text
@@ -13,7 +30,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 6 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`, working tree clean.
+Git: 7 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 05 changes uncommitted.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -29,6 +46,10 @@ backend/
 ├── middleware/auth.middleware.js PLACEHOLDER — protect/authorizeRoles stubs (Phase 06/08)
 ├── utils/apiResponse.js         DONE — successResponse()/errorResponse() helpers
 ├── controllers/.gitkeep         Empty — controllers from Phase 06 on
+├── models/User.model.js        DONE (Phase 05) — User schema: name/email/password/phone/
+│                                role/profileImage/isActive + timestamps; roles enum (admin,
+│                                doctor, patient, receptionist, pharmacist, lab_technician);
+│                                bcryptjs hashing; matchPassword(); password never returned
 ├── .env.example                 DONE — PORT, MONGO_URI, JWT, Cloudinary, email,
 │                                RAZORPAY, FRONTEND_URL placeholders
 ├── .gitignore                   DONE — ignores .env, node_modules, uploads
@@ -78,7 +99,7 @@ Stack notes:
 | 02 | Architecture & cleanup | ✅ Done — `models/`, `routes/`, `services/`, `styles/` created; Clerk leftover `frontend/.env` untracked+deleted; 3 lint errors fixed (`npm run lint` = 0 errors) |
 | 03 | Environment config | ✅ Done — `backend/.env` (dev values + random JWT secret, ignored), `backend/.env.example` complete, `frontend/.env.example` + `frontend/.env` with `VITE_API_URL`; verified: no `.env` tracked, both ignored, backend boots from `.env`, Vite `loadEnv` resolves the var |
 | 04 | MongoDB connection | ✅ Done — `connectDB()` wired into `server.js` startup (dev warns + boots, prod exits 1), `/api/health` reports `database` state; verified live: connected to local Compass MongoDB `medicare` DB, failure paths (empty/bad URI) tested |
-| 05 | User model | ⬜ |
+| 05 | User model | ✅ Done — `User.model.js`: 7 fields + timestamps, 6 roles enum, bcryptjs hashing (pre-save + update hooks), matchPassword(), password never serialized (`select:false` + toJSON transform), unique lowercase email; verified live against local DB |
 | 06 | Backend auth (JWT) | ⬜ Middleware stubs exist |
 | 07 | Frontend auth | 🟡 ~20% — axios instance + AuthContext scaffold exist; no Login/Register pages, no AuthProvider |
 | 08 | Role-based access | ⬜ `authorizeRoles()` stub exists |
