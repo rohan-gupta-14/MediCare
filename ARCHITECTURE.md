@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-11)
 
-- **Completed:** Phases 01–06 (audit, cleanup, env config, MongoDB connection, User model, JWT auth).
+- **Completed:** Phases 01–07 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -19,11 +19,20 @@
   patient), duplicate email 409, validation 400s, login 200/401 (same message for wrong pw vs
   unknown email), inactive login 403, /me 200/401 (missing, garbage, expired tokens),
   authorizeRoles unit checks. Temp script removed after run.
-- **Uncommitted:** `backend/middleware/auth.middleware.js`, `backend/controllers/auth.controller.js`,
-  `backend/routes/auth.routes.js`, `backend/server.js`, `ARCHITECTURE.md`
-  — waiting on user commit: `git add . && git commit -m "feat: implement JWT authentication" && git push origin main`.
-- **Next: PHASE 07 — Frontend Authentication**: Login/Register pages, AuthProvider wiring
-  AuthContext, token storage via useLocalStorage, route guards; commit: `feat: add frontend authentication`.
+- **Phase 07 verified live:** AuthProvider (`context/AuthContext.jsx`) with login/register/
+  logout + session restore via GET /auth/me; `components/ProtectedRoute.jsx` guard (loading →
+  /login redirect w/ `state.from`); pages `Login`, `Register`, placeholder `Dashboard`;
+  Navbar shows name + Logout when authenticated; `api.js` 401 interceptor fixed to not redirect
+  on failed login/register attempts. Verified: `npm run lint` 0 errors, `npm run build` ok
+  (329 kB JS), headless-Chrome smoke: /login, /register render forms; /dashboard without session
+  → /dashboard with valid token → "Welcome, …" + Logout + role; stale token → back to Login.
+- **Uncommitted:** `frontend/src/context/AuthContext.jsx`, `frontend/src/components/ProtectedRoute.jsx`,
+  `frontend/src/pages/{Login,Register,Dashboard}.jsx`, `frontend/src/App.jsx`, `frontend/src/main.jsx`,
+  `frontend/src/components/Navbar.jsx`, `frontend/src/services/api.js`, `ARCHITECTURE.md`
+  — waiting on user commit: `git add . && git commit -m "feat: implement frontend authentication" && git push origin main`.
+- **Next: PHASE 08 — Role-Based Access Control**: role permissions per role (admin full,
+  doctor appts/patients/records/prescriptions, patient own data, receptionist patients/appts/
+  admissions/billing); backend `authorizeRoles()` is ready; commit: `feat: add role-based access control`.
 
 ## 1. High-Level Structure
 
@@ -36,7 +45,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 8 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 06 changes uncommitted.
+Git: 11 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 07 changes uncommitted.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -78,16 +87,29 @@ express-rate-limit, express-validator (or manual validation), razorpay.
 
 ```text
 frontend/src/
-├── main.jsx              BrowserRouter + App (no providers yet)
-├── App.jsx               Routes: "/" → Home, "*" → 404. Auth/dashboard routes commented
+├── main.jsx              BrowserRouter + AuthProvider + App
+├── App.jsx               Routes: "/" → Home, /login, /register, ProtectedRoute → /dashboard,
+│                         "*" → 404
 ├── index.css             @import "tailwindcss" (Tailwind v4 via @tailwindcss/vite)
-├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles
+├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles; auth-aware
+│                         since Phase 07 (shows name + Logout when logged in)
+├── components/ProtectedRoute.jsx DONE (Phase 07) — guard: loading screen → /login redirect
+│                         with state.from → <Outlet />
 ├── layouts/MainLayout.jsx PLACEHOLDER passthrough (full dashboard layout → Phase 09)
 ├── pages/Home.jsx        Renders only <Navbar /> — landing page not built yet
-├── context/AuthContext.jsx PLACEHOLDER — useAuth() hook scaffold (Phase 07)
-├── services/api.js       Axios instance: baseURL from VITE_API_URL (fallback
-│                         localhost:5000/api), JWT request interceptor,
-│                         401 response interceptor
+├── pages/Login.jsx       DONE (Phase 07) — email/password, backend error display, redirects
+│                         to state.from or /dashboard on success
+├── pages/Register.jsx    DONE (Phase 07) — name/email/phone/password+confirm (client
+│                         validation), creates patient account, auto-login
+├── pages/Dashboard.jsx   PLACEHOLDER (Phase 07) — protected welcome card + logout;
+│                         replaced by real dashboards in Phases 09–10
+├── context/AuthContext.jsx DONE (Phase 07) — AuthProvider: user/token/loading state, login(),
+│                         register(), logout(), session restore via GET /auth/me; token stored
+│                         raw in localStorage (`medicare_token`), user JSON (`medicare_user`)
+├── services/api.js       DONE — Axios: baseURL from VITE_API_URL (fallback localhost:5000/api),
+│                         Bearer-token request interceptor, 401 response interceptor (clears
+│                         session + redirects to /login, except on /auth/login|/auth/register
+│                         attempts so those pages can show their own error)
 ├── hooks/useLocalStorage.js  DONE
 ├── utils/formatDate.js        DONE — formatDate, formatDateTime, getAge (en-IN)
 ├── assets/               60+ images + dummyStyles.js (1,529 lines of ready-made
@@ -112,7 +134,7 @@ Stack notes:
 | 04 | MongoDB connection | ✅ Done — `connectDB()` wired into `server.js` startup (dev warns + boots, prod exits 1), `/api/health` reports `database` state; verified live: connected to local Compass MongoDB `medicare` DB, failure paths (empty/bad URI) tested |
 | 05 | User model | ✅ Done — `User.model.js`: 7 fields + timestamps, 6 roles enum, bcryptjs hashing (pre-save + update hooks), matchPassword(), password never serialized (`select:false` + toJSON transform), unique lowercase email; verified live against local DB |
 | 06 | Backend auth (JWT) | ✅ Done — `/api/auth/register|login|me`, protect + authorizeRoles middleware, JWT signed with id+role (JWT_EXPIRES), safe responses (password never serialized), validation + E11000/ValidationError mapping; verified live 23/23 |
-| 07 | Frontend auth | 🟡 ~20% — axios instance + AuthContext scaffold exist; no Login/Register pages, no AuthProvider |
+| 07 | Frontend auth | ✅ Done — AuthProvider (login/register/logout + /me session restore), Login/Register pages (shared `loginPageStyles`), ProtectedRoute guard, placeholder Dashboard, Navbar auth-aware, api.js interceptor fixed; lint 0 errors, build ok, headless-Chrome smoke verified |
 | 08 | Role-based access | ⬜ `authorizeRoles()` stub exists |
 | 09 | Dashboard layout | 🟡 ~10% — MainLayout passthrough; public Navbar done |
 | 10 | Admin dashboard | ⬜ |
@@ -128,7 +150,7 @@ Public landing page (hero, services, doctors sections) is **not built** — only
 1. ~~**`frontend/.env` is tracked by git**~~ → **FIXED in Phase 02**: file untracked and deleted (it only contained a dead `VITE_CLERK_PUBLISHABLE_KEY`). No `.env` files are tracked anymore.
 2. ~~**Clerk is a dead leftover**~~ → **REMOVED in Phase 02**: `.env` gone, no Clerk package in `package.json`, no source file imports Clerk. Auth is JWT per Phases 06–08.
 3. ~~Backend has **no `.env`**~~ → **FIXED in Phase 03**: `backend/.env` created (git-ignored) with dev PORT/NODE_ENV/JWT values; **`MONGO_URI` set in Phase 04** — local MongoDB Compass (`localhost:27017/medicare`); switch to Atlas string later for deployment.
-4. `services/api.js` redirects to `/login` on 401, but `/login` route doesn't exist yet → will 404 until Phase 07.
+4. ~~`services/api.js` redirects to `/login` on 401, but `/login` route doesn't exist~~ → **FIXED in Phase 07**: `/login`, `/register` routes + pages exist; interceptor no longer hijacks failed login attempts.
 
 ## 6. Known Issues
 

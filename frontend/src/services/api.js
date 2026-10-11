@@ -1,12 +1,12 @@
 /**
- * api.js — Axios instance (Phase 07 will populate this)
+ * api.js — Axios instance (DONE — Phase 07)
  *
  * This file creates a pre-configured Axios instance that:
  * - Points to the backend API base URL (from VITE_API_URL env var)
  * - Automatically attaches the JWT token to every request
- * - Handles 401 responses (logout on token expiry)
- *
- * Full implementation in Phase 07.
+ * - Handles 401 responses (logout on token expiry) — except on
+ *   /auth/login & /auth/register attempts, where the page shows
+ *   its own error message instead of redirecting.
  */
 
 import axios from 'axios';
@@ -35,9 +35,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('medicare_token');
-      localStorage.removeItem('medicare_user');
-      window.location.href = '/login';
+      const url = error.config?.url || '';
+      // A failed login/register attempt is NOT an expired session —
+      // let the page show its own "invalid credentials" error.
+      const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register');
+
+      if (!isAuthAttempt) {
+        localStorage.removeItem('medicare_token');
+        localStorage.removeItem('medicare_user');
+        // Hard redirect so React fully resets its state
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }

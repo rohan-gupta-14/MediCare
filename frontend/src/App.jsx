@@ -1,5 +1,9 @@
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // ────────────────────────────────────────────────
 // Routes will expand across Phases 07 – 44.
@@ -13,15 +17,14 @@ const App = () => {
       <Route path="/" element={<Home />} />
 
       {/* Auth pages — Phase 07 */}
-      {/* <Route path="/login" element={<Login />} /> */}
-      {/* <Route path="/register" element={<Register />} /> */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      {/* Protected dashboard — Phase 09+ */}
-      {/* <Route element={<ProtectedRoute />}> */}
-      {/*   <Route element={<MainLayout />}> */}
-      {/*     <Route path="/dashboard" element={<Dashboard />} /> */}
-      {/*   </Route> */}
-      {/* </Route> */}
+      {/* Protected dashboard — Phase 07 placeholder.
+          Phase 09 wraps this in <MainLayout /> for the full sidebar layout. */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Route>
 
       {/* 404 fallback */}
       <Route path="*" element={

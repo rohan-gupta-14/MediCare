@@ -1,7 +1,8 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import { User, Menu, X } from 'lucide-react';
+import { User, Menu, X, LogOut } from 'lucide-react';
 import logo from '../assets/logo.png';
+import useAuth from '../hooks/useAuth';
 
 // navbarStyles defined locally since dummyStyles.js does not yet export them
 const navbarStyles = {
@@ -47,11 +48,19 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const handleLoginClick = () => {
-    // Will be wired to auth flow in Phase 07
     navigate('/login');
   };
+
+  const handleLogoutClick = () => {
+    logout();
+    setIsOpen(false);
+    navigate('/', { replace: true });
+  };
+
+  const firstName = user?.name?.split(' ')[0];
 
   return (
     <>
@@ -95,13 +104,32 @@ const Navbar = () => {
 
             {/* Right Side */}
             <div className={navbarStyles.rightContainer}>
-              <button
-                onClick={handleLoginClick}
-                className={navbarStyles.loginButton}
-              >
-                <User className={navbarStyles.loginIcon} />
-                Login
-              </button>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/dashboard"
+                    className="hidden sm:flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-900 transition-all"
+                  >
+                    <User className="w-4 h-4" />
+                    {firstName || 'Account'}
+                  </Link>
+                  <button
+                    onClick={handleLogoutClick}
+                    className={navbarStyles.loginButton}
+                  >
+                    <LogOut className={navbarStyles.loginIcon} />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleLoginClick}
+                  className={navbarStyles.loginButton}
+                >
+                  <User className={navbarStyles.loginIcon} />
+                  Login
+                </button>
+              )}
 
               {/* Mobile Toggle */}
               <button
@@ -137,13 +165,23 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            <button
-              onClick={() => { setIsOpen(false); handleLoginClick(); }}
-              className={navbarStyles.mobileLoginButton}
-            >
-              <User className="w-4 h-4" />
-              Login
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogoutClick}
+                className={navbarStyles.mobileLoginButton}
+              >
+                <LogOut className="w-4 h-4" />
+                Logout ({firstName || 'Account'})
+              </button>
+            ) : (
+              <button
+                onClick={() => { setIsOpen(false); handleLoginClick(); }}
+                className={navbarStyles.mobileLoginButton}
+              >
+                <User className="w-4 h-4" />
+                Login
+              </button>
+            )}
           </div>
         )}
       </nav>
