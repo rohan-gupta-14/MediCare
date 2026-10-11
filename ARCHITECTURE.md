@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-11)
 
-- **Completed:** Phases 01–07 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth).
+- **Completed:** Phases 01–08 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -26,13 +26,26 @@
   on failed login/register attempts. Verified: `npm run lint` 0 errors, `npm run build` ok
   (329 kB JS), headless-Chrome smoke: /login, /register render forms; /dashboard without session
   → /dashboard with valid token → "Welcome, …" + Logout + role; stale token → back to Login.
-- **Uncommitted:** `frontend/src/context/AuthContext.jsx`, `frontend/src/components/ProtectedRoute.jsx`,
-  `frontend/src/pages/{Login,Register,Dashboard}.jsx`, `frontend/src/App.jsx`, `frontend/src/main.jsx`,
-  `frontend/src/components/Navbar.jsx`, `frontend/src/services/api.js`, `ARCHITECTURE.md`
-  — waiting on user commit: `git add . && git commit -m "feat: implement frontend authentication" && git push origin main`.
-- **Next: PHASE 08 — Role-Based Access Control**: role permissions per role (admin full,
-  doctor appts/patients/records/prescriptions, patient own data, receptionist patients/appts/
-  admissions/billing); backend `authorizeRoles()` is ready; commit: `feat: add role-based access control`.
+- **Phase 08 verified live:** `backend/config/permissions.js` (single-source RBAC matrix:
+  15 resources × read/write, 6 roles, admin `*`; `can()` + `effectivePermissions()`),
+  `requirePermission(resource, action)` middleware, `GET /api/auth/permissions` endpoint.
+  32-assertion suite: matrix conformance for all 6 roles (allow + deny lists vs spec),
+  middleware behavior (next/403/401), live HTTP permissions per role, frontend-mirror sync check.
+  Frontend: `utils/permissions.js` (UI mirror + `accessibleModules` + `roleHome`),
+  `RequireRole` route guard → `/unauthorized` (new page), Dashboard shows role access chips,
+  Login/Register navigate via `roleHome()`. Lint 0/0, build ok (332 kB), headless-Chrome:
+  /unauthorized renders "Access denied" + role; doctor dashboard shows exactly
+  Appointments/Patients/Medical Records/Prescriptions chips. Row-level "own data" scoping
+  is deferred to resource controllers (Phases 11+).
+- **Uncommitted:** `backend/config/permissions.js`, `backend/middleware/auth.middleware.js`,
+  `backend/controllers/auth.controller.js`, `backend/routes/auth.routes.js`,
+  `frontend/src/utils/permissions.js`, `frontend/src/components/RequireRole.jsx`,
+  `frontend/src/pages/Unauthorized.jsx`, `frontend/src/pages/{Login,Register,Dashboard}.jsx`,
+  `frontend/src/App.jsx`, `ARCHITECTURE.md`
+  — waiting on user commit: `git add . && git commit -m "feat: implement role based access control" && git push origin main`.
+- **Next: PHASE 09 — Main Application Layout**: Sidebar + Navbar + Header dashboard shell
+  (MainLayout placeholder exists; `utils/permissions.js` `accessibleModules()` feeds the sidebar);
+  commit: `feat: add dashboard layout`.
 
 ## 1. High-Level Structure
 
@@ -45,7 +58,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 11 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 07 changes uncommitted.
+Git: 12 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 08 changes uncommitted.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -55,16 +68,20 @@ backend/
 ├── server.js                    Express app: CORS, JSON parsing, /api/health,
 │                                404 handler, global error handler, route
 │                                placeholders commented per phase
+├── config/permissions.js        DONE (Phase 08) — RBAC matrix: RESOURCES (15), ACTIONS (read/write),
+│                                ROLE_PERMISSIONS (admin `*`), can(), effectivePermissions()
 ├── config/db.js                 DONE (Phase 04) — connectDB(): validates MONGO_URI,
 │                                10s serverSelection timeout, lifecycle event logs,
 │                                returns true/false (never throws)
-├── middleware/auth.middleware.js DONE (Phase 06) — protect() verifies Bearer JWT, loads user,
-│                                rejects inactive accounts; authorizeRoles(...roles) → 403
+├── middleware/auth.middleware.js DONE (Phase 06/08) — protect() verifies Bearer JWT, loads user,
+│                                rejects inactive accounts; authorizeRoles(...roles) → 403;
+│                                requirePermission(resource, action) → 403 via config/permissions.js
 ├── utils/apiResponse.js         DONE — successResponse()/errorResponse() helpers
 ├── controllers/auth.controller.js DONE (Phase 06) — register (manual validation, 409 on dup
 │                                email, hashes via model hook), login (identical 401 message for
 │                                wrong pw vs unknown email), getMe
-├── routes/auth.routes.js        DONE (Phase 06) — POST /register, POST /login, GET /me (protected)
+├── routes/auth.routes.js        DONE (Phase 06/08) — POST /register, POST /login, GET /me,
+│                                GET /permissions (all protected except register/login)
 ├── controllers/.gitkeep         Empty — more controllers from Phase 11 on
 ├── models/User.model.js        DONE (Phase 05) — User schema: name/email/password/phone/
 │                                role/profileImage/isActive + timestamps; roles enum (admin,
@@ -95,6 +112,11 @@ frontend/src/
 │                         since Phase 07 (shows name + Logout when logged in)
 ├── components/ProtectedRoute.jsx DONE (Phase 07) — guard: loading screen → /login redirect
 │                         with state.from → <Outlet />
+├── components/RequireRole.jsx DONE (Phase 08) — role guard for nested routes: wrong role →
+│                         /unauthorized; nest inside ProtectedRoute
+├── utils/permissions.js   DONE (Phase 08) — UI mirror of RBAC matrix, can(),
+│                         accessibleModules(), roleHome(); MODULE_LABELS for Phase 09 sidebar
+├── pages/Unauthorized.jsx DONE (Phase 08) — 403 page (role shown, back-to-dashboard link)
 ├── layouts/MainLayout.jsx PLACEHOLDER passthrough (full dashboard layout → Phase 09)
 ├── pages/Home.jsx        Renders only <Navbar /> — landing page not built yet
 ├── pages/Login.jsx       DONE (Phase 07) — email/password, backend error display, redirects
@@ -135,7 +157,7 @@ Stack notes:
 | 05 | User model | ✅ Done — `User.model.js`: 7 fields + timestamps, 6 roles enum, bcryptjs hashing (pre-save + update hooks), matchPassword(), password never serialized (`select:false` + toJSON transform), unique lowercase email; verified live against local DB |
 | 06 | Backend auth (JWT) | ✅ Done — `/api/auth/register|login|me`, protect + authorizeRoles middleware, JWT signed with id+role (JWT_EXPIRES), safe responses (password never serialized), validation + E11000/ValidationError mapping; verified live 23/23 |
 | 07 | Frontend auth | ✅ Done — AuthProvider (login/register/logout + /me session restore), Login/Register pages (shared `loginPageStyles`), ProtectedRoute guard, placeholder Dashboard, Navbar auth-aware, api.js interceptor fixed; lint 0 errors, build ok, headless-Chrome smoke verified |
-| 08 | Role-based access | ⬜ `authorizeRoles()` stub exists |
+| 08 | Role-based access | ✅ Done — `config/permissions.js` matrix (15 resources, 6 roles, admin `*`), `requirePermission()` middleware, `GET /api/auth/permissions`; frontend `RequireRole` + `/unauthorized` + `accessibleModules()` chips; verified 32/32 + headless-Chrome smoke |
 | 09 | Dashboard layout | 🟡 ~10% — MainLayout passthrough; public Navbar done |
 | 10 | Admin dashboard | ⬜ |
 | 11–42 | Models/UI/features | ⬜ Not started |

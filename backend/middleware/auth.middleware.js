@@ -12,6 +12,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 const { errorResponse } = require('../utils/apiResponse');
+const { can } = require('../config/permissions');
 
 /**
  * protect — Verifies the JWT token from the Authorization header.
@@ -87,4 +88,29 @@ const authorizeRoles = (...roles) => {
   };
 };
 
-module.exports = { protect, authorizeRoles };
+/**
+ * requirePermission — Resource-level RBAC check (Phase 08).
+ * Must run after protect. 403 unless the role holds "resource:action"
+ * in config/permissions.js.
+ *
+ * Usage: router.get('/', protect, requirePermission('appointments', 'read'), handler)
+ * Note: row-level scoping ("patient sees only OWN rows") belongs in the
+ * resource controllers, not here.
+ */
+const requirePermission = (resource, action = 'read') => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return errorResponse(res, 'Not authorized — please log in first', 401);
+    }
+    if (!can(req.user.role, `${resource}:${action}`)) {
+      return errorResponse(
+        res,
+        `Access denied — role "${req.user.role}" cannot ${action} ${resource}`,
+        403
+      );
+    }
+    return next();
+  };
+};
+
+module.exports = { protect, authorizeRoles, requirePermission };

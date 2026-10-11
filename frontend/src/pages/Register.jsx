@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { loginPageStyles as styles } from '../assets/dummyStyles';
 import useAuth from '../hooks/useAuth';
+import { roleHome } from '../utils/permissions';
 
 const Register = () => {
   const { register, isAuthenticated, loading } = useAuth();
@@ -63,13 +64,13 @@ const Register = () => {
 
     setSubmitting(true);
     try {
-      await register({
+      const user = await register({
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
       });
-      navigate('/dashboard', { replace: true });
+      navigate(roleHome(user.role), { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to register. Please try again.');
       setSubmitting(false);

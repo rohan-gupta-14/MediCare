@@ -13,6 +13,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
+const { effectivePermissions } = require('../config/permissions');
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -148,4 +149,23 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe };
+// ──────────────────────────────────────────────
+// GET /api/auth/permissions  (protected) — Phase 08
+// ─────────────────────────────────────────────
+
+const getMyPermissions = async (req, res, next) => {
+  try {
+    return successResponse(
+      res,
+      {
+        role: req.user.role,
+        permissions: effectivePermissions(req.user.role),
+      },
+      'Effective permissions for current user'
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = { register, login, getMe, getMyPermissions };

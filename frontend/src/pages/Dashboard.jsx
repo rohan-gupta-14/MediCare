@@ -9,6 +9,7 @@
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
+import { accessibleModules, MODULE_LABELS } from '../utils/permissions';
 
 const Dashboard = () => {
   const { user, role, logout } = useAuth();
@@ -31,10 +32,27 @@ const Dashboard = () => {
         </p>
         <p className="text-sm text-green-500 mb-8">{user?.email}</p>
 
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-gray-500 mb-3">
           The full dashboard arrives in Phases 09–10 — this placeholder proves
           the authentication loop works end-to-end.
         </p>
+
+        {/* Phase 08: modules your role can access */}
+        <div className="mb-8">
+          <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-3">
+            Your access
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {accessibleModules(role).map((module) => (
+              <span
+                key={module}
+                className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-medium"
+              >
+                {MODULE_LABELS[module] || module}
+              </span>
+            ))}
+          </div>
+        </div>
 
         <button
           onClick={handleLogout}

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { loginPageStyles as styles } from '../assets/dummyStyles';
 import useAuth from '../hooks/useAuth';
+import { roleHome } from '../utils/permissions';
 
 const Login = () => {
   const { login, isAuthenticated, loading } = useAuth();
@@ -41,8 +42,9 @@ const Login = () => {
 
     setSubmitting(true);
     try {
-      await login(form.email.trim(), form.password);
-      navigate(from, { replace: true });
+      const user = await login(form.email.trim(), form.password);
+      // Deep-link target wins; otherwise each role gets its own home (Phase 08+)
+      navigate(from && from !== '/dashboard' ? from : roleHome(user.role), { replace: true });
     } catch (err) {
       // Backend messages: 401 invalid credentials, 403 deactivated, 500 config
       setError(err.response?.data?.message || 'Unable to log in. Please try again.');

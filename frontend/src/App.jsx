@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // ────────────────────────────────────────────────
@@ -20,10 +21,19 @@ const App = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
+      {/* 403 fallback — Phase 08 */}
+      <Route path="/unauthorized" element={<Unauthorized />} />
+
       {/* Protected dashboard — Phase 07 placeholder.
-          Phase 09 wraps this in <MainLayout /> for the full sidebar layout. */}
+          Phase 09 wraps this in <MainLayout /> for the full sidebar layout.
+          Phase 08: role-scoped routes nest RequireRole inside ProtectedRoute —
+          import { RequireRole } from './components/RequireRole' and use
+          <Route element={<RequireRole roles={['admin']} />}> for /admin (Phase 10). */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        {/* Example of the RBAC nesting pattern, ready for Phase 10+:
+        <Route element={<RequireRole roles={['admin', 'doctor']} />}>
+          <Route path="/records" element={<Records />} />  */}
       </Route>
 
       {/* 404 fallback */}
