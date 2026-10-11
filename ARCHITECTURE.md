@@ -37,15 +37,15 @@
   /unauthorized renders "Access denied" + role; doctor dashboard shows exactly
   Appointments/Patients/Medical Records/Prescriptions chips. Row-level "own data" scoping
   is deferred to resource controllers (Phases 11+).
-- **Uncommitted:** `backend/config/permissions.js`, `backend/middleware/auth.middleware.js`,
-  `backend/controllers/auth.controller.js`, `backend/routes/auth.routes.js`,
-  `frontend/src/utils/permissions.js`, `frontend/src/components/RequireRole.jsx`,
-  `frontend/src/pages/Unauthorized.jsx`, `frontend/src/pages/{Login,Register,Dashboard}.jsx`,
-  `frontend/src/App.jsx`, `ARCHITECTURE.md`
-  — waiting on user commit: `git add . && git commit -m "feat: implement role based access control" && git push origin main`.
-- **Next: PHASE 09 — Main Application Layout**: Sidebar + Navbar + Header dashboard shell
-  (MainLayout placeholder exists; `utils/permissions.js` `accessibleModules()` feeds the sidebar);
-  commit: `feat: add dashboard layout`.
+- **Session saved (2026-10-11):** Phases 01–08 all committed **and pushed**
+  (`main` == `origin/main`; Phase 08 = `1f69fe2 feat: implement role based access control`).
+  Working tree clean except this doc update.
+- **Tomorrow — start at: PHASE 09 — Main Application Layout**: Sidebar + Navbar + Header
+  dashboard shell. Useful starting points: `layouts/MainLayout.jsx` (placeholder passthrough),
+  `utils/permissions.js` → `accessibleModules()` + `MODULE_LABELS` feed the role-aware sidebar,
+  `RequireRole` for role-scoped routes, dummyStyles.js has ready-made sidebar/header styles;
+  commit: `feat: add dashboard layout`. Tip: ask to "start Phase 9", first confirm Phase 08
+  is committed (`git log --oneline -1`).
 
 ## 1. High-Level Structure
 
