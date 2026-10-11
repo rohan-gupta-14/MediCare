@@ -45,7 +45,8 @@ app.get('/api/health', (req, res) => {
 // ──────────────────────────────────────────────
 // Routes (added progressively per phase)
 // ──────────────────────────────────────────────
-// Phase 06: app.use('/api/auth', require('./routes/auth.routes'));
+// Phase 06
+app.use('/api/auth', require('./routes/auth.routes'));
 // Phase 11: app.use('/api/patients', require('./routes/patient.routes'));
 // Phase 13: app.use('/api/doctors', require('./routes/doctor.routes'));
 // Phase 15: app.use('/api/departments', require('./routes/department.routes'));

@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-11)
 
-- **Completed:** Phases 01–05 (audit, cleanup, env config, MongoDB connection, User model).
+- **Completed:** Phases 01–06 (audit, cleanup, env config, MongoDB connection, User model, JWT auth).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -13,11 +13,17 @@
   `matchPassword()`, `toJSON()` strips password, password `select: false`, unique lowercased
   email (`email_1` index confirmed in DB), roles enum + default `patient`, timestamps.
   Verified with a 22-assertion script against the local DB (temp script removed after run).
-- **Uncommitted:** `backend/models/User.model.js`, `ARCHITECTURE.md`
-  — waiting on user commit: `git add . && git commit -m "feat: add user authentication model" && git push origin main`.
-- **Next: PHASE 06 — Backend Authentication** (`POST /api/auth/register`, `POST /api/auth/login`,
-  `GET /api/auth/me`): routes + controllers + `auth.middleware.js` protect() using JWT_SECRET/
-  JWT_EXPIRES, validation, never return passwords; commit: `feat: implement JWT authentication`.
+- **Phase 06 verified live:** `routes/auth.routes.js` + `controllers/auth.controller.js` +
+  `middleware/auth.middleware.js` (protect + authorizeRoles); wired into `server.js` at `/api/auth`.
+  23-assertion HTTP suite against local DB: register (201, token, no password, default role
+  patient), duplicate email 409, validation 400s, login 200/401 (same message for wrong pw vs
+  unknown email), inactive login 403, /me 200/401 (missing, garbage, expired tokens),
+  authorizeRoles unit checks. Temp script removed after run.
+- **Uncommitted:** `backend/middleware/auth.middleware.js`, `backend/controllers/auth.controller.js`,
+  `backend/routes/auth.routes.js`, `backend/server.js`, `ARCHITECTURE.md`
+  — waiting on user commit: `git add . && git commit -m "feat: implement JWT authentication" && git push origin main`.
+- **Next: PHASE 07 — Frontend Authentication**: Login/Register pages, AuthProvider wiring
+  AuthContext, token storage via useLocalStorage, route guards; commit: `feat: add frontend authentication`.
 
 ## 1. High-Level Structure
 
@@ -30,7 +36,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 7 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 05 changes uncommitted.
+Git: 8 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 06 changes uncommitted.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -43,9 +49,14 @@ backend/
 ├── config/db.js                 DONE (Phase 04) — connectDB(): validates MONGO_URI,
 │                                10s serverSelection timeout, lifecycle event logs,
 │                                returns true/false (never throws)
-├── middleware/auth.middleware.js PLACEHOLDER — protect/authorizeRoles stubs (Phase 06/08)
+├── middleware/auth.middleware.js DONE (Phase 06) — protect() verifies Bearer JWT, loads user,
+│                                rejects inactive accounts; authorizeRoles(...roles) → 403
 ├── utils/apiResponse.js         DONE — successResponse()/errorResponse() helpers
-├── controllers/.gitkeep         Empty — controllers from Phase 06 on
+├── controllers/auth.controller.js DONE (Phase 06) — register (manual validation, 409 on dup
+│                                email, hashes via model hook), login (identical 401 message for
+│                                wrong pw vs unknown email), getMe
+├── routes/auth.routes.js        DONE (Phase 06) — POST /register, POST /login, GET /me (protected)
+├── controllers/.gitkeep         Empty — more controllers from Phase 11 on
 ├── models/User.model.js        DONE (Phase 05) — User schema: name/email/password/phone/
 │                                role/profileImage/isActive + timestamps; roles enum (admin,
 │                                doctor, patient, receptionist, pharmacist, lab_technician);
@@ -100,7 +111,7 @@ Stack notes:
 | 03 | Environment config | ✅ Done — `backend/.env` (dev values + random JWT secret, ignored), `backend/.env.example` complete, `frontend/.env.example` + `frontend/.env` with `VITE_API_URL`; verified: no `.env` tracked, both ignored, backend boots from `.env`, Vite `loadEnv` resolves the var |
 | 04 | MongoDB connection | ✅ Done — `connectDB()` wired into `server.js` startup (dev warns + boots, prod exits 1), `/api/health` reports `database` state; verified live: connected to local Compass MongoDB `medicare` DB, failure paths (empty/bad URI) tested |
 | 05 | User model | ✅ Done — `User.model.js`: 7 fields + timestamps, 6 roles enum, bcryptjs hashing (pre-save + update hooks), matchPassword(), password never serialized (`select:false` + toJSON transform), unique lowercase email; verified live against local DB |
-| 06 | Backend auth (JWT) | ⬜ Middleware stubs exist |
+| 06 | Backend auth (JWT) | ✅ Done — `/api/auth/register|login|me`, protect + authorizeRoles middleware, JWT signed with id+role (JWT_EXPIRES), safe responses (password never serialized), validation + E11000/ValidationError mapping; verified live 23/23 |
 | 07 | Frontend auth | 🟡 ~20% — axios instance + AuthContext scaffold exist; no Login/Register pages, no AuthProvider |
 | 08 | Role-based access | ⬜ `authorizeRoles()` stub exists |
 | 09 | Dashboard layout | 🟡 ~10% — MainLayout passthrough; public Navbar done |
