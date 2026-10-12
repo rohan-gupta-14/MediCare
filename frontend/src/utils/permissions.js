@@ -103,6 +103,8 @@ export const roleLabel = (role) => ROLE_LABELS[role] || role;
 
 /**
  * roleHome — Where each role lands after login.
- * Fills in as real role dashboards ship (Phase 10 admin, etc.).
+ * Admin gets the analytics dashboard (Phase 10); everyone else stays on
+ * the generic /dashboard until their role dashboard ships
+ * (doctor → Phase 19, patient → Phase 20, …).
  */
-export const roleHome = () => '/dashboard';
+export const roleHome = (role) => (role === 'admin' ? '/admin' : '/dashboard');

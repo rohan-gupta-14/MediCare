@@ -22,8 +22,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in → don't show the form
-  if (isAuthenticated && !loading) {
+  // Already logged in → don't show the form.
+  // `!submitting` is essential: right after a successful login the context
+  // flips isAuthenticated while handleSubmit is still running — without it
+  // this <Navigate to={from}> races handleSubmit's navigate(roleHome(...))
+  // and can send an admin to /dashboard instead of /admin (Phase 10 fix).
+  if (isAuthenticated && !loading && !submitting) {
     return <Navigate to={from} replace />;
   }
 

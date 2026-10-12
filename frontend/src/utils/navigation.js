@@ -8,6 +8,8 @@
  *   module     RBAC module key from utils/permissions.js — controls visibility
  *              (the item shows only if the role can at least read that module)
  *   always     true → visible to every role (e.g. Dashboard)
+ *   roles      optional allow-list — item only shows for these roles
+ *              (checked in addition to always/module visibility)
  *   path       route to link to
  *   icon       lucide-react icon component
  *   enabled    true → clickable NavLink. false → rendered dimmed with a
@@ -19,6 +21,7 @@
 
 import {
   LayoutDashboard,
+  BarChart3,
   Users,
   Stethoscope,
   Building2,
@@ -39,6 +42,8 @@ export const NAV_SECTIONS = [
     title: 'Overview',
     items: [
       { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, always: true, enabled: true },
+      // Phase 10 — admin-only analytics (RequireRole guards the route too)
+      { label: 'Admin Dashboard', path: '/admin', icon: BarChart3, always: true, roles: ['admin'], enabled: true },
     ],
   },
   {
@@ -91,7 +96,9 @@ export const visibleNavSections = (role) => {
     ...section,
     items: section.items
       .filter(
-        (item) => item.always || (item.module && modules.includes(item.module))
+        (item) =>
+          (!item.roles || item.roles.includes(role)) &&
+          (item.always || (item.module && modules.includes(item.module)))
       )
       .map((item) => ({
         ...item,

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -5,7 +6,12 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
+import RequireRole from './components/RequireRole';
 import MainLayout from './layouts/MainLayout';
+
+// Lazy-loaded: pulls Recharts (~200 kB) out of the main bundle so public
+// pages and other dashboards don't pay for the admin charts.
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 // ────────────────────────────────────────────────
 // Routes will expand across Phases 07 – 44.
@@ -26,17 +32,30 @@ const App = () => {
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Protected dashboard area — Phase 07 guard + Phase 09 layout shell.
-          Every dashboard page nests inside <MainLayout /> (sidebar + header).
-          Phase 08: role-scoped routes nest RequireRole inside ProtectedRoute —
-          import { RequireRole } from './components/RequireRole' and use
-          <Route element={<RequireRole roles={['admin']} />}> for /admin (Phase 10). */}
+          Every dashboard page nests inside <MainLayout /> (sidebar + header). */}
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* Future dashboard pages (Phase 10+) go inside this layout:
+
+          {/* Phase 10 — admin analytics, role-scoped via RequireRole (Phase 08).
+              Wrong role → /unauthorized. Future role dashboards follow the
+              same pattern (doctor Phase 19, patient Phase 20). */}
           <Route element={<RequireRole roles={['admin']} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Route> */}
+            <Route
+              path="/admin"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="flex min-h-[40vh] items-center justify-center text-sm font-semibold text-emerald-600 animate-pulse">
+                      Loading dashboard…
+                    </div>
+                  }
+                >
+                  <AdminDashboard />
+                </Suspense>
+              }
+            />
+          </Route>
         </Route>
       </Route>
 

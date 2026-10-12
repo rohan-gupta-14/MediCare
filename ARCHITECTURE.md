@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-12)
 
-- **Completed:** Phases 01–09 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout).
+- **Completed:** Phases 01–10 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -58,15 +58,16 @@
   outside-click close, content offset 256, mobile drawer off-canvas → opens via hamburger
   → overlay/Escape/nav-click closes, no horizontal overflow at 390 px, logout → `/` +
   session cleared. Temp test scripts removed after run.
-- **Session saved (2026-10-12):** Phases 01–08 pushed (`1f69fe2` Phase 08, `917db82` docs);
-  Phase 09 changes in working tree awaiting the phase commit.
-- **Next — start at: PHASE 10 — Admin Dashboard**: stat cards (patients, doctors, today's /
-  pending appointments, revenue, beds), Recharts charts (**`npm i recharts` in frontend** —
-  not yet installed). Useful starting points: dashboard page goes inside MainLayout as a new
-  `<Route>` in App.jsx (nest `RequireRole roles={['admin']}` per the Phase 08 pattern),
-  `utils/navigation.js` → flip `enabled: true` for nav items as their pages ship,
-  `assets/dummyStyles.js` has dashboard card/chart style objects.
-  Commit: `feat: create admin dashboard analytics`.
+- **Session saved (2026-10-12):** Phases 01–09 pushed (Phase 09 = `f3eeb66 create responsive
+  dashboard layout`); Phase 10 changes in working tree awaiting the phase commit.
+- **Next — start at: PHASE 11 — Patient Model & API**: `backend/models/Patient.model.js`
+  (user, patientId, name, email, phone, gender, dateOfBirth, bloodGroup, address,
+  emergencyContact, profileImage, medicalHistory, allergies) + CRUD under
+  `routes/patient.routes.js` / `controllers/patient.controller.js`, mounted in `server.js`,
+  guarded with `protect` + `requirePermission('patients', 'read'|'write')` (Phase 08 middleware
+  already exists). Frontend swaps `hooks/useAdminStats.js` → `api.get('/stats/admin')` when
+  enough models exist (swap plan in `utils/mockAdminStats.js`).
+  Commit: `feat: add patient management`.
 
 ## 1. High-Level Structure
 
@@ -126,7 +127,8 @@ express-rate-limit, express-validator (or manual validation), razorpay.
 ```text
 frontend/src/
 ├── main.jsx              BrowserRouter + AuthProvider + App
-├── App.jsx               Routes: "/" → Home, /login, /register, ProtectedRoute → /dashboard,
+├── App.jsx               Routes: "/" → Home, /login, /register, /unauthorized; ProtectedRoute
+│                         → MainLayout → /dashboard + /admin (RequireRole(['admin']), lazy);
 │                         "*" → 404
 ├── index.css             @import "tailwindcss" (Tailwind v4 via @tailwindcss/vite)
 ├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles; auth-aware
@@ -139,15 +141,19 @@ frontend/src/
 │                         "Soon", logout via window.location.assign('/'))
 ├── components/NotificationBell.jsx DONE (Phase 09) — notification dropdown shell w/ empty
 │                         state; unread count + mark-as-read → Phase 38
+├── components/StatCard.jsx DONE (Phase 10) — reusable metric card (icon chip + value + hint,
+│                         tone variants); used by AdminDashboard
 ├── components/ProtectedRoute.jsx DONE (Phase 07) — guard: loading screen → /login redirect
 │                         with state.from → <Outlet />
 ├── components/RequireRole.jsx DONE (Phase 08) — role guard for nested routes: wrong role →
 │                         /unauthorized; nest inside ProtectedRoute
 ├── utils/permissions.js   DONE (Phase 08) — UI mirror of RBAC matrix, can(),
-│                         accessibleModules(), roleHome(); MODULE_LABELS; + ROLE_LABELS/
-│                         roleLabel() (Phase 09)
-├── utils/navigation.js   DONE (Phase 09) — NAV_SECTIONS (icon + module + path + enabled),
-│                         visibleNavSections(role), titleForPath(pathname)
+│                         accessibleModules(), roleHome(role) (Phase 10: admin → /admin);
+│                         MODULE_LABELS; + ROLE_LABELS/roleLabel() (Phase 09)
+├── utils/navigation.js   DONE (Phase 09) — NAV_SECTIONS (icon + module + path + enabled +
+│                         roles allow-list), visibleNavSections(role), titleForPath(pathname)
+├── utils/mockAdminStats.js DONE (Phase 10) — sample admin figures + 6-month series; swap
+│                         plan for GET /api/stats/admin once Phases 11–33 models exist
 ├── pages/Unauthorized.jsx DONE (Phase 08) — 403 page (role shown, back-to-dashboard link)
 ├── layouts/MainLayout.jsx DONE (Phase 09) — sidebar + sticky header + page container shell
 ├── pages/Home.jsx        Renders only <Navbar /> — landing page not built yet
@@ -155,8 +161,10 @@ frontend/src/
 │                         to state.from or /dashboard on success
 ├── pages/Register.jsx    DONE (Phase 07) — name/email/phone/password+confirm (client
 │                         validation), creates patient account, auto-login
-├── pages/Dashboard.jsx   PLACEHOLDER (Phase 07) — protected welcome card + logout;
-│                         replaced by real dashboards in Phases 09–10
+├── pages/Dashboard.jsx   PLACEHOLDER (Phase 07, restyled Phase 09) — welcome card + access
+│                         chips + logout; admin analytics live at /admin since Phase 10
+├── pages/AdminDashboard.jsx DONE (Phase 10) — 7 stat cards + 3 Recharts charts (area/bar/
+│                         line), sample-data chip, skeleton loading; lazy-loaded chunk
 ├── context/AuthContext.jsx DONE (Phase 07) — AuthProvider: user/token/loading state, login(),
 │                         register(), logout(), session restore via GET /auth/me; token stored
 │                         raw in localStorage (`medicare_token`), user JSON (`medicare_user`)
@@ -165,6 +173,8 @@ frontend/src/
 │                         session + redirects to /login, except on /auth/login|/auth/register
 │                         attempts so those pages can show their own error)
 ├── hooks/useLocalStorage.js  DONE
+├── hooks/useAdminStats.js    DONE (Phase 10) — admin dashboard data hook (400 ms simulated
+│                         fetch → skeleton); swap body for api.get('/stats/admin') later
 ├── utils/formatDate.js        DONE — formatDate, formatDateTime, getAge (en-IN)
 ├── assets/               60+ images + dummyStyles.js (1,529 lines of ready-made
 │                         Tailwind style objects: tables, cards, forms, modals,
@@ -172,11 +182,12 @@ frontend/src/
 └── eslint.config.js
 ```
 
-Verified: `npm run build` succeeds (267 kB JS / 83 kB CSS), `npm run lint` reports **3 errors** (see §6).
+Verified: `npm run lint` = 0 errors; `npm run build` succeeds (main 350 kB JS / 86 kB CSS +
+lazy AdminDashboard chunk 409 kB — Recharts split out).
 
 Stack notes:
 - **Tailwind CSS v4 is already integrated** → we keep it instead of plain CSS/CSS Modules (compatible substitution allowed by the master prompt).
-- lucide-react, axios, react-router-dom already installed. recharts not yet installed (Phase 10).
+- lucide-react, axios, react-router-dom already installed. **recharts ^3.10.1 installed (Phase 10)**.
 
 ## 4. Phase Status Map (45 phases)
 
@@ -191,8 +202,9 @@ Stack notes:
 | 07 | Frontend auth | ✅ Done — AuthProvider (login/register/logout + /me session restore), Login/Register pages (shared `loginPageStyles`), ProtectedRoute guard, placeholder Dashboard, Navbar auth-aware, api.js interceptor fixed; lint 0 errors, build ok, headless-Chrome smoke verified |
 | 08 | Role-based access | ✅ Done — `config/permissions.js` matrix (15 resources, 6 roles, admin `*`), `requirePermission()` middleware, `GET /api/auth/permissions`; frontend `RequireRole` + `/unauthorized` + `accessibleModules()` chips; verified 32/32 + headless-Chrome smoke |
 | 09 | Dashboard layout | ✅ Done — MainLayout shell + Sidebar/Header/UserMenu/NotificationBell + navigation.js; logout race fixed; lint 0, build ok, CDP smoke 73/73 across 3 roles |
+| 10 | Admin dashboard | ✅ Done — `/admin` behind `RequireRole(['admin'])` (lazy Recharts chunk), 7 stat cards + 3 charts via `useAdminStats()` (sample data until Phases 11–33, swap plan in `mockAdminStats.js`), role-aware sidebar item, `roleHome('admin') → /admin`, Login/Register `<Navigate>` race fixed; lint 0, build ok (350 kB main / 409 kB admin chunk), CDP smoke 43/43 across 4 modes |
 | 10 | Admin dashboard | ⬜ |
-| 11–42 | Models/UI/features | ⬜ Not started |
+| 11–42 | Models/UI/features | ⬜ Not started (next: Phase 11 Patient model & API) |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |
 | 44 | E2E testing | ⬜ No test files exist yet |
 | 45 | Deployment | ⬜ No vercel.json / render.yaml yet |

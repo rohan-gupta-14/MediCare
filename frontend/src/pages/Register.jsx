@@ -27,8 +27,10 @@ const Register = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in → nothing to register
-  if (isAuthenticated && !loading) {
+  // Already logged in → nothing to register.
+  // `!submitting` prevents this <Navigate> from racing the post-register
+  // navigate(roleHome(...)) in handleSubmit (same race as Login.jsx).
+  if (isAuthenticated && !loading && !submitting) {
     return <Navigate to="/dashboard" replace />;
   }
 
