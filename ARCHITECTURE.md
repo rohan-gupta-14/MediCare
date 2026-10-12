@@ -59,7 +59,7 @@
   → overlay/Escape/nav-click closes, no horizontal overflow at 390 px, logout → `/` +
   session cleared. Temp test scripts removed after run.
 - **Session saved (2026-10-12):** Phases 01–09 pushed (Phase 09 = `f3eeb66 create responsive
-  dashboard layout`); Phase 10 changes in working tree awaiting the phase commit.
+  dashboard layout`); Phase 10 committed (see `git log` — `feat: create admin dashboard analytics`).
 - **Next — start at: PHASE 11 — Patient Model & API**: `backend/models/Patient.model.js`
   (user, patientId, name, email, phone, gender, dateOfBirth, bloodGroup, address,
   emergencyContact, profileImage, medicalHistory, allergies) + CRUD under
