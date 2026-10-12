@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
+import MainLayout from './layouts/MainLayout';
 
 // ────────────────────────────────────────────────
 // Routes will expand across Phases 07 – 44.
@@ -24,16 +25,19 @@ const App = () => {
       {/* 403 fallback — Phase 08 */}
       <Route path="/unauthorized" element={<Unauthorized />} />
 
-      {/* Protected dashboard — Phase 07 placeholder.
-          Phase 09 wraps this in <MainLayout /> for the full sidebar layout.
+      {/* Protected dashboard area — Phase 07 guard + Phase 09 layout shell.
+          Every dashboard page nests inside <MainLayout /> (sidebar + header).
           Phase 08: role-scoped routes nest RequireRole inside ProtectedRoute —
           import { RequireRole } from './components/RequireRole' and use
           <Route element={<RequireRole roles={['admin']} />}> for /admin (Phase 10). */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        {/* Example of the RBAC nesting pattern, ready for Phase 10+:
-        <Route element={<RequireRole roles={['admin', 'doctor']} />}>
-          <Route path="/records" element={<Records />} />  */}
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Future dashboard pages (Phase 10+) go inside this layout:
+          <Route element={<RequireRole roles={['admin']} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route> */}
+        </Route>
       </Route>
 
       {/* 404 fallback */}

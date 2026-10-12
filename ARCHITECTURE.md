@@ -2,9 +2,9 @@
 
 > Living document. Updated as phases complete.
 
-## 📍 Resume Point (end of session 2026-10-11)
+## 📍 Resume Point (end of session 2026-10-12)
 
-- **Completed:** Phases 01–08 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC).
+- **Completed:** Phases 01–09 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -37,15 +37,36 @@
   /unauthorized renders "Access denied" + role; doctor dashboard shows exactly
   Appointments/Patients/Medical Records/Prescriptions chips. Row-level "own data" scoping
   is deferred to resource controllers (Phases 11+).
-- **Session saved (2026-10-11):** Phases 01–08 all committed **and pushed**
-  (`main` == `origin/main`; Phase 08 = `1f69fe2 feat: implement role based access control`).
-  Working tree clean except this doc update.
-- **Tomorrow — start at: PHASE 09 — Main Application Layout**: Sidebar + Navbar + Header
-  dashboard shell. Useful starting points: `layouts/MainLayout.jsx` (placeholder passthrough),
-  `utils/permissions.js` → `accessibleModules()` + `MODULE_LABELS` feed the role-aware sidebar,
-  `RequireRole` for role-scoped routes, dummyStyles.js has ready-made sidebar/header styles;
-  commit: `feat: add dashboard layout`. Tip: ask to "start Phase 9", first confirm Phase 08
-  is committed (`git log --oneline -1`).
+- **Phase 09 verified live (2026-10-12):** full dashboard shell. `layouts/MainLayout.jsx`
+  (sidebar + sticky header + `lg:pl-64` page container + footer, drawer state derived from
+  pathname so no setState-in-effect), `components/Sidebar.jsx` (role-aware sections from
+  `utils/navigation.js` → `visibleNavSections(role)`; unbuilt routes render dimmed "Soon"
+  items instead of dead links; mobile off-canvas drawer with overlay/Escape/nav-click close),
+  `components/Header.jsx` (hamburger + route-derived title), `components/UserMenu.jsx`
+  (initials avatar dropdown: Dashboard link, Profile "Soon", logout),
+  `components/NotificationBell.jsx` (empty-state shell, real data Phase 38),
+  `utils/navigation.js` (NAV_SECTIONS + `titleForPath()`), `permissions.js` gained
+  `ROLE_LABELS`/`roleLabel()`. App.jsx nests `/dashboard` inside
+  `ProtectedRoute → MainLayout`; Dashboard restyled as a content card.
+  **Logout race fixed:** `logout()`-then-`navigate('/')` raced ProtectedRoute's
+  `<Navigate to="/login">` (guard could win) → UserMenu + Dashboard now `logout()` then
+  `window.location.assign('/')` (same hard-redirect pattern as api.js 401 handler).
+  Verified: lint 0/0, build ok (349 kB JS / 85 kB CSS), headless-Chrome CDP smoke with
+  hermetic `/auth/me` stub — **admin 25/25, doctor 25/25, patient 23/23**: desktop rail
+  x=0/w=256, hamburger hidden on desktop, header title, no dead sidebar links, RBAC
+  sections (admin sees all, doctor/patient filtered), user-menu + notification dropdowns,
+  outside-click close, content offset 256, mobile drawer off-canvas → opens via hamburger
+  → overlay/Escape/nav-click closes, no horizontal overflow at 390 px, logout → `/` +
+  session cleared. Temp test scripts removed after run.
+- **Session saved (2026-10-12):** Phases 01–08 pushed (`1f69fe2` Phase 08, `917db82` docs);
+  Phase 09 changes in working tree awaiting the phase commit.
+- **Next — start at: PHASE 10 — Admin Dashboard**: stat cards (patients, doctors, today's /
+  pending appointments, revenue, beds), Recharts charts (**`npm i recharts` in frontend** —
+  not yet installed). Useful starting points: dashboard page goes inside MainLayout as a new
+  `<Route>` in App.jsx (nest `RequireRole roles={['admin']}` per the Phase 08 pattern),
+  `utils/navigation.js` → flip `enabled: true` for nav items as their pages ship,
+  `assets/dummyStyles.js` has dashboard card/chart style objects.
+  Commit: `feat: create admin dashboard analytics`.
 
 ## 1. High-Level Structure
 
@@ -110,14 +131,25 @@ frontend/src/
 ├── index.css             @import "tailwindcss" (Tailwind v4 via @tailwindcss/vite)
 ├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles; auth-aware
 │                         since Phase 07 (shows name + Logout when logged in)
+├── components/Sidebar.jsx DONE (Phase 09) — role-aware nav sections (visibleNavSections),
+│                         desktop rail + mobile drawer, "Soon" badges for unbuilt routes
+├── components/Header.jsx DONE (Phase 09) — sticky top bar: hamburger, route-derived title,
+│                         NotificationBell + UserMenu
+├── components/UserMenu.jsx DONE (Phase 09) — initials avatar dropdown (Dashboard, Profile
+│                         "Soon", logout via window.location.assign('/'))
+├── components/NotificationBell.jsx DONE (Phase 09) — notification dropdown shell w/ empty
+│                         state; unread count + mark-as-read → Phase 38
 ├── components/ProtectedRoute.jsx DONE (Phase 07) — guard: loading screen → /login redirect
 │                         with state.from → <Outlet />
 ├── components/RequireRole.jsx DONE (Phase 08) — role guard for nested routes: wrong role →
 │                         /unauthorized; nest inside ProtectedRoute
 ├── utils/permissions.js   DONE (Phase 08) — UI mirror of RBAC matrix, can(),
-│                         accessibleModules(), roleHome(); MODULE_LABELS for Phase 09 sidebar
+│                         accessibleModules(), roleHome(); MODULE_LABELS; + ROLE_LABELS/
+│                         roleLabel() (Phase 09)
+├── utils/navigation.js   DONE (Phase 09) — NAV_SECTIONS (icon + module + path + enabled),
+│                         visibleNavSections(role), titleForPath(pathname)
 ├── pages/Unauthorized.jsx DONE (Phase 08) — 403 page (role shown, back-to-dashboard link)
-├── layouts/MainLayout.jsx PLACEHOLDER passthrough (full dashboard layout → Phase 09)
+├── layouts/MainLayout.jsx DONE (Phase 09) — sidebar + sticky header + page container shell
 ├── pages/Home.jsx        Renders only <Navbar /> — landing page not built yet
 ├── pages/Login.jsx       DONE (Phase 07) — email/password, backend error display, redirects
 │                         to state.from or /dashboard on success
@@ -158,7 +190,7 @@ Stack notes:
 | 06 | Backend auth (JWT) | ✅ Done — `/api/auth/register|login|me`, protect + authorizeRoles middleware, JWT signed with id+role (JWT_EXPIRES), safe responses (password never serialized), validation + E11000/ValidationError mapping; verified live 23/23 |
 | 07 | Frontend auth | ✅ Done — AuthProvider (login/register/logout + /me session restore), Login/Register pages (shared `loginPageStyles`), ProtectedRoute guard, placeholder Dashboard, Navbar auth-aware, api.js interceptor fixed; lint 0 errors, build ok, headless-Chrome smoke verified |
 | 08 | Role-based access | ✅ Done — `config/permissions.js` matrix (15 resources, 6 roles, admin `*`), `requirePermission()` middleware, `GET /api/auth/permissions`; frontend `RequireRole` + `/unauthorized` + `accessibleModules()` chips; verified 32/32 + headless-Chrome smoke |
-| 09 | Dashboard layout | 🟡 ~10% — MainLayout passthrough; public Navbar done |
+| 09 | Dashboard layout | ✅ Done — MainLayout shell + Sidebar/Header/UserMenu/NotificationBell + navigation.js; logout race fixed; lint 0, build ok, CDP smoke 73/73 across 3 roles |
 | 10 | Admin dashboard | ⬜ |
 | 11–42 | Models/UI/features | ⬜ Not started |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |

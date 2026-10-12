@@ -82,7 +82,7 @@ const Register = () => {
       <div className={styles.loginCard}>
         {/* Logo */}
         <div className={styles.logoContainer}>
-          <span className="text-6xl" aria-hidden="true">🏥</span>
+          <span className="text-6xl" aria-hidden="true"></span>
         </div>
 
         <h2 className={styles.title}>Create your account</h2>
@@ -107,7 +107,7 @@ const Register = () => {
               name="name"
               type="text"
               autoComplete="name"
-              placeholder="Jane Doe"
+              placeholder="Rohan Gupta"
               value={form.name}
               onChange={handleChange}
               className={styles.input}

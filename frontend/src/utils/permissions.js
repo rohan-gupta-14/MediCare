@@ -88,6 +88,19 @@ export const accessibleModules = (role) => {
   return [...new Set(grants.map((g) => g.split(':')[0]))];
 };
 
+// Human-readable role names for menus/badges (Phase 09 header + sidebar)
+export const ROLE_LABELS = {
+  admin: 'Administrator',
+  doctor: 'Doctor',
+  patient: 'Patient',
+  receptionist: 'Receptionist',
+  pharmacist: 'Pharmacist',
+  lab_technician: 'Lab Technician',
+};
+
+/** roleLabel — pretty name for a role (falls back to the raw value). */
+export const roleLabel = (role) => ROLE_LABELS[role] || role;
+
 /**
  * roleHome — Where each role lands after login.
  * Fills in as real role dashboards ship (Phase 10 admin, etc.).

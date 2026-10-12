@@ -1,40 +1,42 @@
 /**
- * Dashboard — Placeholder protected page (Phase 07)
+ * Dashboard — Placeholder protected page (Phase 07, restyled for Phase 09)
  *
- * Proves the auth loop end-to-end: only reachable when authenticated,
- * shows the current user, and offers logout.
- * Phase 09 (layout) + Phase 10+ (role dashboards) will replace this.
+ * Now rendered inside the MainLayout shell (sidebar + header), so it is a
+ * normal content card instead of a full-screen page. Proves the auth loop
+ * end-to-end: shows the current user, role access and logout.
+ * Phase 10+ replaces the content with real role dashboards.
  */
 
-import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import { accessibleModules, MODULE_LABELS } from '../utils/permissions';
+import { accessibleModules, MODULE_LABELS, roleLabel } from '../utils/permissions';
 
 const Dashboard = () => {
   const { user, role, logout } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogout = () => {
+    // Hard redirect (not navigate()) so ProtectedRoute's <Navigate> can't
+    // race us to /login — see UserMenu.handleLogout for details.
     logout();
-    navigate('/', { replace: true });
+    window.location.assign('/');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-100 to-green-200 flex items-center justify-center px-4">
-      <div className="bg-white/60 backdrop-blur-xl shadow-2xl rounded-3xl p-10 w-full max-w-lg border border-green-200 text-center">
+    <div className="mx-auto w-full max-w-2xl">
+      <div className="rounded-3xl border border-emerald-100 bg-white p-8 text-center shadow-sm sm:p-10">
         <div className="text-6xl mb-4" aria-hidden="true">🏥</div>
         <h1 className="text-3xl font-bold text-emerald-700 tracking-wide mb-2">
           Welcome, {user?.name?.split(' ')[0] || 'there'}!
         </h1>
         <p className="text-green-600 mb-1">
-          You are logged in as <span className="font-semibold">{user?.role || role}</span>
+          You are logged in as{' '}
+          <span className="font-semibold">{roleLabel(user?.role || role)}</span>
         </p>
         <p className="text-sm text-green-500 mb-8">{user?.email}</p>
 
         <p className="text-sm text-gray-500 mb-3">
-          The full dashboard arrives in Phases 09–10 — this placeholder proves
-          the authentication loop works end-to-end.
+          Role dashboards arrive in Phase 10+ — use the sidebar to move around
+          the modules your role can access.
         </p>
 
         {/* Phase 08: modules your role can access */}
@@ -63,7 +65,6 @@ const Dashboard = () => {
         </button>
       </div>
     </div>
-  );
-};
+  );};
 
 export default Dashboard;

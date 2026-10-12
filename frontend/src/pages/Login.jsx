@@ -57,7 +57,7 @@ const Login = () => {
       <div className={styles.loginCard}>
         {/* Logo */}
         <div className={styles.logoContainer}>
-          <span className="text-6xl" aria-hidden="true">🏥</span>
+          <span className="text-6xl" aria-hidden="true"></span>
         </div>
 
         <h2 className={styles.title}>Welcome back</h2>
