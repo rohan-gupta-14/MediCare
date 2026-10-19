@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-19)
 
-- **Completed:** Phases 01–13 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API, patient management UI, doctor model & API).
+- **Completed:** Phases 01–14 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API, patient management UI, doctor model & API, doctor management UI).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -131,14 +131,38 @@
   pagination + sort; detail by both id forms with user populated; update immutability + dup-email 409 +
   fee/availability validation; delete idempotence 404. Temp users + doctors purged, temp scripts
   removed, server stopped.
-- **Session saved (2026-10-19):** Phase 13 committed (see `git log` — `feat: add doctor management`).
-- **Next — start at: PHASE 14 — Doctor Management UI**: doctor list/cards/table + doctor details +
-  add/edit/delete + doctor profile, with search + specialization filtering, wired to `/api/doctors`
-  via `services/api.js`. Matrix note: `doctors:*` is admin-only today, so the sidebar `doctors` item
-  stays hidden for every non-admin role — revisit the Phase 08 matrix first if doctors/receptionists
-  should see it. Follow the Phase 12 pattern (Patients page + PatientFormModal + ConfirmDialog,
-  effect-inline fetch for react-hooks v7, keyed modal mounts, CDP smoke vs the live stack).
-  Commit: `feat: create doctor management interface`.
+- **Phase 14 verified live (2026-10-19):** doctor management UI (admin-only), wired to the Phase 13
+  API. New: `utils/doctorOptions.js` (SPECIALIZATIONS ×15 + DAYS mirror of the backend enums,
+  `dayLabel()` for chips, `formatInr()` fee formatter), `pages/Doctors.jsx` (**card grid + table view
+  toggle** — both spec deliverables — plus 300 ms-debounced search, specialization filter,
+  pagination, skeletons, empty/error states, toasts; Add/Edit modal + delete confirm),
+  `pages/DoctorDetails.jsx` (profile: specialization/department/experience header, Practice +
+  Contact cards, full weekly-availability schedule with Available/Unavailable badges, linked-account
+  note, derived loading, "Changes saved" toast), `components/DoctorFormModal.jsx` (shared add/edit
+  form — client validation mirrors backend incl. availability rows: day select constrained to unused
+  days, time windows, isAvailable checkbox; keyed mount + lazy `useState` seeding).
+  Routes `/doctors` + `/doctors/:id` nest in MainLayout behind RequireRole(['admin']); sidebar
+  Doctors item flipped to `enabled` (visible to admin only — module visibility follows the matrix).
+  Verified: `npm run lint` 0/0, `npm run build` ok (414 kB main / 89 kB CSS / 409 kB admin chunk),
+  live headless-Chrome CDP smoke vs running backend + Vite: **29/29** — admin UI login → sidebar
+  item enabled → cards view (fee ₹ + specialization + Mon day chip) → table view (DOC-id badges) →
+  debounced search + clear + specialization filter + clear → client validation blocks empty form →
+  create with availability row (monday 09:00–13:00; toast, count 2→3) → profile by DOC-id
+  (specialization, ₹750, full "Monday 09:00 – 13:00 Available" schedule, unlinked note) → edit fee
+  (toast + ₹875 on profile) → delete (confirm → toast → row gone, count 3→2) → doctor role
+  redirected to /unauthorized + sidebar hides Doctors → **zero uncaught page exceptions**.
+  Two fixes came out of verification, both product-side: the availability schedule showed the
+  3-letter chip label ("Mon") in the detailed view — now full day names; earlier a smoke fix only
+  corrected harness field indices (the dialog's department/qualification inputs had shifted the
+  selector order — the fee field was never being filled). Temp scripts removed, temp users/doctors
+  purged, dev servers + headless Chrome stopped.
+- **Session saved (2026-10-19):** Phase 14 committed (see `git log` — `feat: create doctor management interface`).
+- **Next — start at: PHASE 15 — Department Management**: `backend/models/Department.model.js`
+  (name, description, headDoctor → ref Doctor, location, status) + CRUD + list + details +
+  search/filter under `/api/departments` (server.js placeholder waits), guarded with `protect` +
+  `requirePermission('departments', …)` — note: the Phase 08 matrix currently grants `departments:*`
+  to admin only (`*`). Remember Phase 13's lesson: a `headDoctor` ref that can be null needs a
+  partial (not sparse-unique) index if uniqueness is wanted. Commit: `feat: add hospital department management`.
 
 ## 1. High-Level Structure
 
@@ -151,7 +175,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 20 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 13 resume point.
+Git: 21 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 14 resume point.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -225,7 +249,8 @@ frontend/src/
 ├── App.jsx               Routes: "/" → Home, /login, /register, /unauthorized; ProtectedRoute
 │                         → MainLayout → /dashboard + /admin (RequireRole(['admin']), lazy)
 │                         + /patients + /patients/:id (RequireRole admin/receptionist/doctor,
-│                         Phase 12); "*" → 404
+│                         Phase 12) + /doctors + /doctors/:id (RequireRole admin,
+│                         Phase 14); "*" → 404
 ├── index.css             @import "tailwindcss" (Tailwind v4 via @tailwindcss/vite)
 ├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles; auth-aware
 │                         since Phase 07 (shows name + Logout when logged in)
@@ -248,13 +273,18 @@ frontend/src/
 ├── components/PatientFormModal.jsx DONE (Phase 12) — shared add/edit patient form (client
 │                         validation mirrors backend, server errors in-banner); parents mount it
 │                         conditionally + keyed so the form seeds via lazy useState
+├── components/DoctorFormModal.jsx DONE (Phase 14) — shared add/edit doctor form + weekly
+│                         availability editor (day rows constrained to unused days, time windows,
+│                         isAvailable); same keyed-mount pattern as PatientFormModal
 ├── utils/permissions.js   DONE (Phase 08) — UI mirror of RBAC matrix, can(),
 │                         accessibleModules(), roleHome(role) (Phase 10: admin → /admin);
 │                         MODULE_LABELS; + ROLE_LABELS/roleLabel() (Phase 09)
-├── utils/navigation.js   DONE (Phase 09, updated Phase 12) — NAV_SECTIONS (icon + module +
+├── utils/navigation.js   DONE (Phase 09, updated Phases 12/14) — NAV_SECTIONS (icon + module +
 │                         path + enabled + roles allow-list), visibleNavSections(role),
-│                         titleForPath(pathname) — Phase 12: Patients item enabled + detail
-│                         routes (/patients/:id) inherit their section title
+│                         titleForPath(pathname) — Patients + Doctors items enabled; detail
+│                         routes (/patients/:id, /doctors/:id) inherit their section title
+├── utils/doctorOptions.js DONE (Phase 14) — SPECIALIZATIONS ×15 + DAYS mirroring the backend
+│                         enums, dayLabel() (3-letter chips), formatInr() fee formatter
 ├── utils/mockAdminStats.js DONE (Phase 10) — sample admin figures + 6-month series; swap
 │                         plan for GET /api/stats/admin once Phases 11–33 models exist
 ├── pages/Unauthorized.jsx DONE (Phase 08) — 403 page (role shown, back-to-dashboard link)
@@ -274,6 +304,12 @@ frontend/src/
 ├── pages/PatientDetails.jsx DONE (Phase 12) — profile (demographics, emergency contact,
 │                         allergy chips, medical history, linked-account note), Edit/Delete
 │                         for writers, derived loading state
+├── pages/Doctors.jsx      DONE (Phase 14) — card grid + table view toggle, debounced search,
+│                         specialization filter, pagination, skeletons/empty/error, toasts,
+│                         add/edit modal + delete confirm (admin-only route)
+├── pages/DoctorDetails.jsx DONE (Phase 14) — profile (specialization/fee/experience header,
+│                         Practice + Contact cards, full weekly availability schedule w/
+│                         Available badges, linked-account note), Edit/Delete, derived loading
 ├── context/AuthContext.jsx DONE (Phase 07) — AuthProvider: user/token/loading state, login(),
 │                         register(), logout(), session restore via GET /auth/me; token stored
 │                         raw in localStorage (`medicare_token`), user JSON (`medicare_user`)
@@ -291,7 +327,7 @@ frontend/src/
 └── eslint.config.js
 ```
 
-Verified (Phase 12): `npm run lint` = 0/0; `npm run build` succeeds (main 381 kB JS / 89 kB CSS +
+Verified (Phase 14): `npm run lint` = 0/0; `npm run build` succeeds (main 414 kB JS / 89 kB CSS +
 lazy AdminDashboard chunk 409 kB — Recharts split out).
 
 Stack notes:
@@ -315,7 +351,8 @@ Stack notes:
 | 11 | Patient model & API | ✅ Done — `Patient.model.js` (auto `patientId` PAT-#### via atomic `counters` `$inc`, unique lowercase email, gender/blood enums, DOB ≤ today, address, emergencyContact subdoc, medicalHistory[], allergies[], nullable `user` link) + `patient.controller.js` / `patient.routes.js` at `/api/patients` (list w/ search+filters+pagination, detail by _id **or** PAT-id, create/update/delete) behind `protect` + `requirePermission('patients', …)`, row-level `scopeFilter()`; verified live 57/57 |
 | 12 | Patient management UI | ✅ Done — `Patients.jsx` (table, debounced search, gender/blood filters, pagination, skeletons/empty/error, toasts, add/edit modal + delete confirm gated on `can('patients:write')`) + `PatientDetails.jsx` (profile, allergy chips, medical history, walk-in note, edit/delete) + shared `PatientFormModal` / `ConfirmDialog`; `/patients` + `/patients/:id` behind RequireRole(admin/receptionist/doctor), sidebar item enabled; lint 0/0, build ok (381 kB main), live CDP smoke 36/36 |
 | 13 | Doctor model & API | ✅ Done — `Doctor.model.js` (auto doctorId DOC-#### via atomic counter, specialization enum ×15, availability[] weekly schedule, required consultationFee ≥ 0, partial-unique `user` link → one profile per account) + `doctor.controller.js` / `doctor.routes.js` at `/api/doctors` (search, specialization + exact-department filters, pagination, detail by _id **or** DOC-id, CRUD) behind `protect` + `requirePermission('doctors', …)` — admin-only per matrix; verified live 67/67 (fixed a sparse-index-nulls false-duplicate bug en route) |
-| 14–42 | Models/UI/features | ⬜ Not started (next: Phase 14 Doctor management UI) |
+| 14 | Doctor management UI | ✅ Done — `Doctors.jsx` (cards + table toggle, search, specialization filter, pagination, add/edit/delete) + `DoctorDetails.jsx` (profile, availability schedule, fee) + `DoctorFormModal` (availability editor) + `doctorOptions.js`; `/doctors` + `/doctors/:id` behind RequireRole(admin), sidebar item enabled; lint 0/0, build ok (414 kB main), live CDP smoke 29/29 |
+| 15–42 | Models/UI/features | ⬜ Not started (next: Phase 15 Department management) |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |
 | 44 | E2E testing | ⬜ No test files exist yet |
 | 45 | Deployment | ⬜ No vercel.json / render.yaml yet |
