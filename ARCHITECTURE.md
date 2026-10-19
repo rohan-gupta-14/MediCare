@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-19)
 
-- **Completed:** Phases 01–12 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API, patient management UI).
+- **Completed:** Phases 01–13 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API, patient management UI, doctor model & API).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -102,15 +102,43 @@
   read-only (table yes, Add/Edit/Delete controls absent) → patient role redirected to /unauthorized
   ("Access denied") + hidden sidebar link → **zero uncaught page exceptions**. Temp smoke + cleanup
   scripts removed, temp users/patients purged from the DB, dev servers + headless Chrome stopped.
-- **Session saved (2026-10-19):** Phase 12 committed (see `git log` — `feat: create patient management interface`).
-- **Next — start at: PHASE 13 — Doctor Model & API**: `backend/models/Doctor.model.js` (user,
-  doctorId, name, specialization, department, qualification, experience, phone, email,
-  consultationFee, availability, profileImage, bio) + CRUD under `routes/doctor.routes.js` /
-  `controllers/doctor.controller.js` mounted at `/api/doctors`, guarded with `protect` +
-  `requirePermission('doctors', 'read'|'write')`. Matrix note: today only admin holds `doctors:*`
-  (Phase 08 config), so the module stays admin-only until that is revisited. Follow the Phase 11
-  pattern (atomic id counter, validation 400s, E11000 → 409, HTTP verification suite).
-  Commit: `feat: add doctor management`.
+- **Phase 13 verified live (2026-10-19):** doctor model + CRUD API; frontend untouched (UI → Phase 14).
+  `models/Doctor.model.js` — spec fields (optional `user` ref, auto `doctorId` `DOC-0001` via the same
+  atomic `counters` `$inc` pattern, specialization enum ×15, department free-text until Phase 15,
+  qualification, experience 0–70 y, phone, unique lowercase email, required `consultationFee` ≥ 0,
+  `availability[]` {day, startTime, endTime, isAvailable} with no-duplicate-day validation,
+  profileImage, bio ≤ 1000); indexes on doctorId/email/name/specialization + **partial unique index
+  on `user`**.
+  `controllers/doctor.controller.js` — list (escaped-regex search over name/email/doctorId/
+  specialization/department/phone; specialization enum filter (invalid → 400) + exact case-insensitive
+  department filter; whitelisted sort incl. experience/consultationFee; pagination ≤ 100), detail
+  accepts ObjectId **or** `DOC-0001`, create (linked user must exist **and** have the doctor role;
+  one profile per account), partial update (`doctorId`/`user` immutable), delete; availability checked
+  (HH:MM format, endTime > startTime, unique days); E11000 → 409, ValidationError → 400, CastError → 400.
+  `routes/doctor.routes.js` — 5 routes behind `protect` + `requirePermission('doctors', read|write)`,
+  mounted at `/api/doctors` in `server.js` (placeholder comment activated). Matrix: only admin holds
+  `doctors:*` → admin-only module for now.
+  **Bug found & fixed during verification:** unique **sparse** still indexes explicit `null`s, so the
+  2nd unlinked doctor (`user: null`) hit a false E11000 "already has a doctor profile". Switched to a
+  **partial** unique index (`partialFilterExpression: { user: { $type: 'objectId' } }`), dropped the
+  stale index in the local DB, confirmed `user_1 unique partial` live.
+  **67-assertion HTTP suite vs local DB: 67/67** — 401s (missing/garbage token); RBAC (doctor/
+  receptionist/patient 403 on read *and* write, admin full CRUD); auto-id format + monotonic
+  sequencing; validation 400s (name, missing/invalid specialization, missing/negative/string fee,
+  phone, experience, bad availability time/day, duplicate day, endTime ≤ startTime); dup email/doctorId
+  → 409; linked-user 404 (missing) / 400 (wrong role) / 409 (duplicate link); search by
+  name/specialization/doctorId; specialization filter + invalid → 400; exact department filter;
+  pagination + sort; detail by both id forms with user populated; update immutability + dup-email 409 +
+  fee/availability validation; delete idempotence 404. Temp users + doctors purged, temp scripts
+  removed, server stopped.
+- **Session saved (2026-10-19):** Phase 13 committed (see `git log` — `feat: add doctor management`).
+- **Next — start at: PHASE 14 — Doctor Management UI**: doctor list/cards/table + doctor details +
+  add/edit/delete + doctor profile, with search + specialization filtering, wired to `/api/doctors`
+  via `services/api.js`. Matrix note: `doctors:*` is admin-only today, so the sidebar `doctors` item
+  stays hidden for every non-admin role — revisit the Phase 08 matrix first if doctors/receptionists
+  should see it. Follow the Phase 12 pattern (Patients page + PatientFormModal + ConfirmDialog,
+  effect-inline fetch for react-hooks v7, keyed modal mounts, CDP smoke vs the live stack).
+  Commit: `feat: create doctor management interface`.
 
 ## 1. High-Level Structure
 
@@ -123,7 +151,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 19 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 12 resume point.
+Git: 20 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 13 resume point.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -153,12 +181,25 @@ backend/
 │                                E11000/ValidationError/CastError → 409/400/400
 ├── routes/patient.routes.js     DONE (Phase 11) — GET/POST /, GET/PUT/DELETE /:id, all behind
 │                                protect + requirePermission('patients', read|write)
+├── controllers/doctor.controller.js DONE (Phase 13) — getDoctors (search + specialization/
+│                                department filters + sort + pagination), getDoctorById (_id or
+│                                DOC-0001), createDoctor (linked user must have the doctor role),
+│                                updateDoctor (doctorId/user immutable), deleteDoctor; availability
+│                                schedule validation (HH:MM, endTime > startTime, unique days)
+├── routes/doctor.routes.js     DONE (Phase 13) — GET/POST /, GET/PUT/DELETE /:id, all behind
+│                                protect + requirePermission('doctors', read|write) — admin-only
+│                                per the Phase 08 matrix
 ├── models/Patient.model.js      DONE (Phase 11) — Patient schema: user (nullable ObjectId ref),
 │                                auto patientId (PAT-0001 via atomic counters $inc), name/email
 │                                (unique)/phone/gender enum/dateOfBirth (≤ today)/bloodGroup enum/
 │                                address/emergencyContact subdoc/profileImage/medicalHistory[]/
 │                                allergies[] + timestamps
-├── controllers/.gitkeep         Legacy placeholder — auth + patient controllers live here now
+├── models/Doctor.model.js      DONE (Phase 13) — Doctor schema: user (nullable ObjectId; partial
+│                                unique index → one profile per account), auto doctorId (DOC-0001),
+│                                name/specialization (enum ×15)/department/qualification/experience
+│                                (0–70)/phone/email (unique)/consultationFee (required ≥ 0)/
+│                                availability[] (day + time window)/profileImage/bio + timestamps
+├── controllers/.gitkeep         Legacy placeholder — auth/patient/doctor controllers live here now
 ├── models/User.model.js        DONE (Phase 05) — User schema: name/email/password/phone/
 │                                role/profileImage/isActive + timestamps; roles enum (admin,
 │                                doctor, patient, receptionist, pharmacist, lab_technician);
@@ -273,7 +314,8 @@ Stack notes:
 | 10 | Admin dashboard | ✅ Done — `/admin` behind `RequireRole(['admin'])` (lazy Recharts chunk), 7 stat cards + 3 charts via `useAdminStats()` (sample data until Phases 11–33, swap plan in `mockAdminStats.js`), role-aware sidebar item, `roleHome('admin') → /admin`, Login/Register `<Navigate>` race fixed; lint 0, build ok (350 kB main / 409 kB admin chunk), CDP smoke 43/43 across 4 modes |
 | 11 | Patient model & API | ✅ Done — `Patient.model.js` (auto `patientId` PAT-#### via atomic `counters` `$inc`, unique lowercase email, gender/blood enums, DOB ≤ today, address, emergencyContact subdoc, medicalHistory[], allergies[], nullable `user` link) + `patient.controller.js` / `patient.routes.js` at `/api/patients` (list w/ search+filters+pagination, detail by _id **or** PAT-id, create/update/delete) behind `protect` + `requirePermission('patients', …)`, row-level `scopeFilter()`; verified live 57/57 |
 | 12 | Patient management UI | ✅ Done — `Patients.jsx` (table, debounced search, gender/blood filters, pagination, skeletons/empty/error, toasts, add/edit modal + delete confirm gated on `can('patients:write')`) + `PatientDetails.jsx` (profile, allergy chips, medical history, walk-in note, edit/delete) + shared `PatientFormModal` / `ConfirmDialog`; `/patients` + `/patients/:id` behind RequireRole(admin/receptionist/doctor), sidebar item enabled; lint 0/0, build ok (381 kB main), live CDP smoke 36/36 |
-| 13–42 | Models/UI/features | ⬜ Not started (next: Phase 13 Doctor model & API) |
+| 13 | Doctor model & API | ✅ Done — `Doctor.model.js` (auto doctorId DOC-#### via atomic counter, specialization enum ×15, availability[] weekly schedule, required consultationFee ≥ 0, partial-unique `user` link → one profile per account) + `doctor.controller.js` / `doctor.routes.js` at `/api/doctors` (search, specialization + exact-department filters, pagination, detail by _id **or** DOC-id, CRUD) behind `protect` + `requirePermission('doctors', …)` — admin-only per matrix; verified live 67/67 (fixed a sparse-index-nulls false-duplicate bug en route) |
+| 14–42 | Models/UI/features | ⬜ Not started (next: Phase 14 Doctor management UI) |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |
 | 44 | E2E testing | ⬜ No test files exist yet |
 | 45 | Deployment | ⬜ No vercel.json / render.yaml yet |
