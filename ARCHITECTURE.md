@@ -2,9 +2,9 @@
 
 > Living document. Updated as phases complete.
 
-## 📍 Resume Point (end of session 2026-10-12)
+## 📍 Resume Point (end of session 2026-10-19)
 
-- **Completed:** Phases 01–10 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard).
+- **Completed:** Phases 01–11 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -58,16 +58,33 @@
   outside-click close, content offset 256, mobile drawer off-canvas → opens via hamburger
   → overlay/Escape/nav-click closes, no horizontal overflow at 390 px, logout → `/` +
   session cleared. Temp test scripts removed after run.
-- **Session saved (2026-10-12):** Phases 01–09 pushed (Phase 09 = `f3eeb66 create responsive
-  dashboard layout`); Phase 10 committed (see `git log` — `feat: create admin dashboard analytics`).
-- **Next — start at: PHASE 11 — Patient Model & API**: `backend/models/Patient.model.js`
-  (user, patientId, name, email, phone, gender, dateOfBirth, bloodGroup, address,
-  emergencyContact, profileImage, medicalHistory, allergies) + CRUD under
-  `routes/patient.routes.js` / `controllers/patient.controller.js`, mounted in `server.js`,
-  guarded with `protect` + `requirePermission('patients', 'read'|'write')` (Phase 08 middleware
-  already exists). Frontend swaps `hooks/useAdminStats.js` → `api.get('/stats/admin')` when
-  enough models exist (swap plan in `utils/mockAdminStats.js`).
-  Commit: `feat: add patient management`.
+- **Phase 11 verified live (2026-10-19):** patient model + CRUD API, frontend untouched (UI → Phase 12).
+  `models/Patient.model.js` — spec fields (optional `user` ref, auto `patientId` `PAT-0001` from an
+  atomic `counters` `$inc` upsert so concurrent creates can't collide, unique lowercase email, gender
+  enum, `dateOfBirth` ≤ today, `bloodGroup` enum, address, `emergencyContact` subdoc, `profileImage`,
+  `medicalHistory[]`, `allergies[]`); indexes on patientId/email/name/user.
+  `controllers/patient.controller.js` — list (escaped-regex search over name/email/patientId/phone,
+  gender + bloodGroup filters, whitelisted sort, `limit ≤ 100` pagination + total), detail accepts an
+  ObjectId **or** `PAT-0001`, create (optional linked account must exist **and** have the patient
+  role), partial update (`patientId`/`user` immutable), delete; E11000 → 409, ValidationError → 400,
+  CastError → 400; row-level `scopeFilter()` keeps a `patient` role on their own row.
+  `routes/patient.routes.js` — 5 routes behind `protect` + `requirePermission('patients', read|write)`,
+  mounted at `/api/patients` in `server.js` (placeholder comment activated).
+  **57-assertion HTTP suite vs local DB: 57/57** — 401s (missing/garbage token), Phase 08 matrix honored
+  (patient role 403 on read *and* write — matrix grants `patients:*` only to admin/doctor/receptionist;
+  doctor read-only → 403 on write), auto-id format + monotonic sequencing, dup email/patientId → 409,
+  validation 400s (name/gender/phone/bloodGroup/future DOB), linked-user 404 (missing) / 400 (wrong
+  role), search by name/email/patientId, gender filter + invalid-filter 400, pagination + sort, detail
+  by both id forms with `user` populated, update immutability + dup-email 409 + unknown → 404, delete
+  403 for doctor / repeat-delete 404. Temp users + patients purged, temp script removed, server stopped.
+- **Session saved (2026-10-19):** Phase 11 committed (see `git log` — `feat: add patient management`).
+- **Next — start at: PHASE 12 — Patient Management UI**: patient list/table + search + filters +
+  add/edit/delete + patient details in `frontend/src/pages/` (reuse `assets/dummyStyles.js`
+  table/form/modal styles), wired to `GET/POST/PUT/DELETE /api/patients` via `services/api.js`;
+  promote the Patients "Soon" item in `utils/navigation.js` and route it in `App.jsx` behind
+  `RequireRole` (admin/receptionist/doctor — the Phase 08 matrix gives `patient` role no
+  `patients:read`, so a patient-facing "my record" view needs a self-read decision first).
+  Commit: `feat: create patient management interface`.
 
 ## 1. High-Level Structure
 
@@ -80,7 +97,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 12 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree has Phase 08 changes uncommitted.
+Git: 18 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 11 resume point.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -104,7 +121,18 @@ backend/
 │                                wrong pw vs unknown email), getMe
 ├── routes/auth.routes.js        DONE (Phase 06/08) — POST /register, POST /login, GET /me,
 │                                GET /permissions (all protected except register/login)
-├── controllers/.gitkeep         Empty — more controllers from Phase 11 on
+├── controllers/patient.controller.js DONE (Phase 11) — getPatients (search + filters + sort +
+│                                pagination), getPatientById (_id or PAT-0001), createPatient,
+│                                updatePatient, deletePatient; scopeFilter() row-level scoping,
+│                                E11000/ValidationError/CastError → 409/400/400
+├── routes/patient.routes.js     DONE (Phase 11) — GET/POST /, GET/PUT/DELETE /:id, all behind
+│                                protect + requirePermission('patients', read|write)
+├── models/Patient.model.js      DONE (Phase 11) — Patient schema: user (nullable ObjectId ref),
+│                                auto patientId (PAT-0001 via atomic counters $inc), name/email
+│                                (unique)/phone/gender enum/dateOfBirth (≤ today)/bloodGroup enum/
+│                                address/emergencyContact subdoc/profileImage/medicalHistory[]/
+│                                allergies[] + timestamps
+├── controllers/.gitkeep         Legacy placeholder — auth + patient controllers live here now
 ├── models/User.model.js        DONE (Phase 05) — User schema: name/email/password/phone/
 │                                role/profileImage/isActive + timestamps; roles enum (admin,
 │                                doctor, patient, receptionist, pharmacist, lab_technician);
@@ -203,8 +231,8 @@ Stack notes:
 | 08 | Role-based access | ✅ Done — `config/permissions.js` matrix (15 resources, 6 roles, admin `*`), `requirePermission()` middleware, `GET /api/auth/permissions`; frontend `RequireRole` + `/unauthorized` + `accessibleModules()` chips; verified 32/32 + headless-Chrome smoke |
 | 09 | Dashboard layout | ✅ Done — MainLayout shell + Sidebar/Header/UserMenu/NotificationBell + navigation.js; logout race fixed; lint 0, build ok, CDP smoke 73/73 across 3 roles |
 | 10 | Admin dashboard | ✅ Done — `/admin` behind `RequireRole(['admin'])` (lazy Recharts chunk), 7 stat cards + 3 charts via `useAdminStats()` (sample data until Phases 11–33, swap plan in `mockAdminStats.js`), role-aware sidebar item, `roleHome('admin') → /admin`, Login/Register `<Navigate>` race fixed; lint 0, build ok (350 kB main / 409 kB admin chunk), CDP smoke 43/43 across 4 modes |
-| 10 | Admin dashboard | ⬜ |
-| 11–42 | Models/UI/features | ⬜ Not started (next: Phase 11 Patient model & API) |
+| 11 | Patient model & API | ✅ Done — `Patient.model.js` (auto `patientId` PAT-#### via atomic `counters` `$inc`, unique lowercase email, gender/blood enums, DOB ≤ today, address, emergencyContact subdoc, medicalHistory[], allergies[], nullable `user` link) + `patient.controller.js` / `patient.routes.js` at `/api/patients` (list w/ search+filters+pagination, detail by _id **or** PAT-id, create/update/delete) behind `protect` + `requirePermission('patients', …)`, row-level `scopeFilter()`; verified live 57/57 |
+| 12–42 | Models/UI/features | ⬜ Not started (next: Phase 12 Patient management UI) |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |
 | 44 | E2E testing | ⬜ No test files exist yet |
 | 45 | Deployment | ⬜ No vercel.json / render.yaml yet |
