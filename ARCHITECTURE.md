@@ -4,7 +4,7 @@
 
 ## 📍 Resume Point (end of session 2026-10-19)
 
-- **Completed:** Phases 01–11 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API).
+- **Completed:** Phases 01–12 (audit, cleanup, env config, MongoDB connection, User model, JWT auth, frontend auth, RBAC, dashboard layout, admin dashboard, patient model & API, patient management UI).
 - **Phase 04 verified live:** backend connects to local MongoDB Compass DB `medicare`
   (`backend/.env` → `MONGO_URI=mongodb://localhost:27017/medicare?...`); health check
   `/api/health` returns `"database":"connected"`; failure paths tested too.
@@ -77,14 +77,40 @@
   role), search by name/email/patientId, gender filter + invalid-filter 400, pagination + sort, detail
   by both id forms with `user` populated, update immutability + dup-email 409 + unknown → 404, delete
   403 for doctor / repeat-delete 404. Temp users + patients purged, temp script removed, server stopped.
-- **Session saved (2026-10-19):** Phase 11 committed (see `git log` — `feat: add patient management`).
-- **Next — start at: PHASE 12 — Patient Management UI**: patient list/table + search + filters +
-  add/edit/delete + patient details in `frontend/src/pages/` (reuse `assets/dummyStyles.js`
-  table/form/modal styles), wired to `GET/POST/PUT/DELETE /api/patients` via `services/api.js`;
-  promote the Patients "Soon" item in `utils/navigation.js` and route it in `App.jsx` behind
-  `RequireRole` (admin/receptionist/doctor — the Phase 08 matrix gives `patient` role no
-  `patients:read`, so a patient-facing "my record" view needs a self-read decision first).
-  Commit: `feat: create patient management interface`.
+- **Phase 12 verified live (2026-10-19):** patient management UI, wired to the Phase 11 API.
+  New: `pages/Patients.jsx` (server-driven table + 300 ms-debounced search + gender/blood-group
+  filters + pagination + skeletons + empty/error states + toasts; Add/Edit modal and delete confirm
+  only when `can(role, 'patients:write')`), `pages/PatientDetails.jsx` (profile: demographics,
+  emergency contact, allergy chips, medical-history list, linked-account note; Edit/Delete for
+  writers; derived loading `!patient && !error`; "Changes saved" toast), `components/PatientFormModal.jsx`
+  (shared add/edit form — client validation mirrors the backend, server errors like 409 duplicate
+  shown in-banner; mounted conditionally + keyed so the form seeds via lazy `useState`),
+  `components/ConfirmDialog.jsx` (generic confirm — busy state, Escape/overlay close).
+  Routes `/patients` + `/patients/:id` nest in MainLayout behind RequireRole(['admin',
+  'receptionist', 'doctor']); sidebar Patients item flipped to `enabled` (no more "Soon");
+  `titleForPath()` maps detail routes to their section title.
+  **Lint gotcha solved properly:** react-hooks v7 `set-state-in-effect` rejects calling a
+  setState-bearing helper straight from an effect — the fetch chain is now inlined in the effect
+  (setState only inside promise callbacks, `active`/seq guards), `load()` is reserved for event
+  handlers; no suppressions used.
+  Verified: `npm run lint` 0/0, `npm run build` ok (381 kB main / 86 kB CSS / 409 kB admin chunk),
+  live headless-Chrome CDP smoke vs running backend + Vite: **36/36** — receptionist UI login →
+  sidebar item enabled → list (2 rows, "Page 1 of 1") → debounced search + clear + gender filter →
+  client validation blocks bad email (dialog stays + alert) → create (toast, count 2→3) → details
+  by PAT-id (badge, blood, allergy chips, walk-in note, emergency section) → edit (prefilled form,
+  toast, heading updates) → delete (confirm modal → toast → row gone, count 3→2) → doctor session
+  read-only (table yes, Add/Edit/Delete controls absent) → patient role redirected to /unauthorized
+  ("Access denied") + hidden sidebar link → **zero uncaught page exceptions**. Temp smoke + cleanup
+  scripts removed, temp users/patients purged from the DB, dev servers + headless Chrome stopped.
+- **Session saved (2026-10-19):** Phase 12 committed (see `git log` — `feat: create patient management interface`).
+- **Next — start at: PHASE 13 — Doctor Model & API**: `backend/models/Doctor.model.js` (user,
+  doctorId, name, specialization, department, qualification, experience, phone, email,
+  consultationFee, availability, profileImage, bio) + CRUD under `routes/doctor.routes.js` /
+  `controllers/doctor.controller.js` mounted at `/api/doctors`, guarded with `protect` +
+  `requirePermission('doctors', 'read'|'write')`. Matrix note: today only admin holds `doctors:*`
+  (Phase 08 config), so the module stays admin-only until that is revisited. Follow the Phase 11
+  pattern (atomic id counter, validation 400s, E11000 → 409, HTTP verification suite).
+  Commit: `feat: add doctor management`.
 
 ## 1. High-Level Structure
 
@@ -97,7 +123,7 @@ MediCare/
 └── .gitignore        Root ignore rules (env, node_modules, dist, uploads)
 ```
 
-Git: 18 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 11 resume point.
+Git: 19 commits, branch `main`, remote `github.com/rohan-gupta-14/MediCare.git`; working tree clean at the Phase 12 resume point.
 No monorepo root `package.json` — backend and frontend are independent npm projects.
 
 ## 2. Backend (Express)
@@ -156,8 +182,9 @@ express-rate-limit, express-validator (or manual validation), razorpay.
 frontend/src/
 ├── main.jsx              BrowserRouter + AuthProvider + App
 ├── App.jsx               Routes: "/" → Home, /login, /register, /unauthorized; ProtectedRoute
-│                         → MainLayout → /dashboard + /admin (RequireRole(['admin']), lazy);
-│                         "*" → 404
+│                         → MainLayout → /dashboard + /admin (RequireRole(['admin']), lazy)
+│                         + /patients + /patients/:id (RequireRole admin/receptionist/doctor,
+│                         Phase 12); "*" → 404
 ├── index.css             @import "tailwindcss" (Tailwind v4 via @tailwindcss/vite)
 ├── components/Navbar.jsx DONE — public navbar, mobile menu, hide/show styles; auth-aware
 │                         since Phase 07 (shows name + Logout when logged in)
@@ -175,11 +202,18 @@ frontend/src/
 │                         with state.from → <Outlet />
 ├── components/RequireRole.jsx DONE (Phase 08) — role guard for nested routes: wrong role →
 │                         /unauthorized; nest inside ProtectedRoute
+├── components/ConfirmDialog.jsx DONE (Phase 12) — generic confirm modal (busy state, Escape/
+│                         overlay close); used by patient list + details delete flows
+├── components/PatientFormModal.jsx DONE (Phase 12) — shared add/edit patient form (client
+│                         validation mirrors backend, server errors in-banner); parents mount it
+│                         conditionally + keyed so the form seeds via lazy useState
 ├── utils/permissions.js   DONE (Phase 08) — UI mirror of RBAC matrix, can(),
 │                         accessibleModules(), roleHome(role) (Phase 10: admin → /admin);
 │                         MODULE_LABELS; + ROLE_LABELS/roleLabel() (Phase 09)
-├── utils/navigation.js   DONE (Phase 09) — NAV_SECTIONS (icon + module + path + enabled +
-│                         roles allow-list), visibleNavSections(role), titleForPath(pathname)
+├── utils/navigation.js   DONE (Phase 09, updated Phase 12) — NAV_SECTIONS (icon + module +
+│                         path + enabled + roles allow-list), visibleNavSections(role),
+│                         titleForPath(pathname) — Phase 12: Patients item enabled + detail
+│                         routes (/patients/:id) inherit their section title
 ├── utils/mockAdminStats.js DONE (Phase 10) — sample admin figures + 6-month series; swap
 │                         plan for GET /api/stats/admin once Phases 11–33 models exist
 ├── pages/Unauthorized.jsx DONE (Phase 08) — 403 page (role shown, back-to-dashboard link)
@@ -193,6 +227,12 @@ frontend/src/
 │                         chips + logout; admin analytics live at /admin since Phase 10
 ├── pages/AdminDashboard.jsx DONE (Phase 10) — 7 stat cards + 3 Recharts charts (area/bar/
 │                         line), sample-data chip, skeleton loading; lazy-loaded chunk
+├── pages/Patients.jsx    DONE (Phase 12) — server-driven table (debounced search, gender +
+│                         blood filters, pagination, skeletons, empty/error states, toasts),
+│                         Add/Edit modal + delete confirm gated on can('patients:write')
+├── pages/PatientDetails.jsx DONE (Phase 12) — profile (demographics, emergency contact,
+│                         allergy chips, medical history, linked-account note), Edit/Delete
+│                         for writers, derived loading state
 ├── context/AuthContext.jsx DONE (Phase 07) — AuthProvider: user/token/loading state, login(),
 │                         register(), logout(), session restore via GET /auth/me; token stored
 │                         raw in localStorage (`medicare_token`), user JSON (`medicare_user`)
@@ -210,7 +250,7 @@ frontend/src/
 └── eslint.config.js
 ```
 
-Verified: `npm run lint` = 0 errors; `npm run build` succeeds (main 350 kB JS / 86 kB CSS +
+Verified (Phase 12): `npm run lint` = 0/0; `npm run build` succeeds (main 381 kB JS / 89 kB CSS +
 lazy AdminDashboard chunk 409 kB — Recharts split out).
 
 Stack notes:
@@ -232,7 +272,8 @@ Stack notes:
 | 09 | Dashboard layout | ✅ Done — MainLayout shell + Sidebar/Header/UserMenu/NotificationBell + navigation.js; logout race fixed; lint 0, build ok, CDP smoke 73/73 across 3 roles |
 | 10 | Admin dashboard | ✅ Done — `/admin` behind `RequireRole(['admin'])` (lazy Recharts chunk), 7 stat cards + 3 charts via `useAdminStats()` (sample data until Phases 11–33, swap plan in `mockAdminStats.js`), role-aware sidebar item, `roleHome('admin') → /admin`, Login/Register `<Navigate>` race fixed; lint 0, build ok (350 kB main / 409 kB admin chunk), CDP smoke 43/43 across 4 modes |
 | 11 | Patient model & API | ✅ Done — `Patient.model.js` (auto `patientId` PAT-#### via atomic `counters` `$inc`, unique lowercase email, gender/blood enums, DOB ≤ today, address, emergencyContact subdoc, medicalHistory[], allergies[], nullable `user` link) + `patient.controller.js` / `patient.routes.js` at `/api/patients` (list w/ search+filters+pagination, detail by _id **or** PAT-id, create/update/delete) behind `protect` + `requirePermission('patients', …)`, row-level `scopeFilter()`; verified live 57/57 |
-| 12–42 | Models/UI/features | ⬜ Not started (next: Phase 12 Patient management UI) |
+| 12 | Patient management UI | ✅ Done — `Patients.jsx` (table, debounced search, gender/blood filters, pagination, skeletons/empty/error, toasts, add/edit modal + delete confirm gated on `can('patients:write')`) + `PatientDetails.jsx` (profile, allergy chips, medical history, walk-in note, edit/delete) + shared `PatientFormModal` / `ConfirmDialog`; `/patients` + `/patients/:id` behind RequireRole(admin/receptionist/doctor), sidebar item enabled; lint 0/0, build ok (381 kB main), live CDP smoke 36/36 |
+| 13–42 | Models/UI/features | ⬜ Not started (next: Phase 13 Doctor model & API) |
 | 43 | UI polish | ⬜ dummyStyles.js gives a head start |
 | 44 | E2E testing | ⬜ No test files exist yet |
 | 45 | Deployment | ⬜ No vercel.json / render.yaml yet |

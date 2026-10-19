@@ -49,7 +49,8 @@ export const NAV_SECTIONS = [
   {
     title: 'Management',
     items: [
-      { module: 'patients', path: '/patients', icon: Users },
+      // Phase 12 — patient management is live (list + details routes)
+      { module: 'patients', path: '/patients', icon: Users, enabled: true },
       { module: 'doctors', path: '/doctors', icon: Stethoscope },
       { module: 'departments', path: '/departments', icon: Building2 },
       { module: 'appointments', path: '/appointments', icon: CalendarDays },
@@ -114,5 +115,9 @@ export const visibleNavSections = (role) => {
 export const titleForPath = (pathname) => {
   const match = ALL_ITEMS.find((item) => item.path === pathname);
   if (match) return match.label || MODULE_LABELS[match.module] || 'Dashboard';
+  // Detail routes inherit their section's title (Phase 12:
+  // /patients/PAT-0001 → "Patients")
+  const parent = ALL_ITEMS.find((item) => item.path !== '/' && pathname.startsWith(`${item.path}/`));
+  if (parent) return parent.label || MODULE_LABELS[parent.module] || 'Dashboard';
   return 'Dashboard';
 };

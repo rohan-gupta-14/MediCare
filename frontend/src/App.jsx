@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Patients from './pages/Patients';
+import PatientDetails from './pages/PatientDetails';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 import RequireRole from './components/RequireRole';
@@ -55,6 +57,14 @@ const App = () => {
                 </Suspense>
               }
             />
+          </Route>
+
+          {/* Phase 12 — patient management. Roles come straight from the
+              Phase 08 matrix: admin/receptionist hold patients:write,
+              doctor patients:read only (the API re-checks both). */}
+          <Route element={<RequireRole roles={['admin', 'receptionist', 'doctor']} />}>
+            <Route path="/patients" element={<Patients />} />
+            <Route path="/patients/:id" element={<PatientDetails />} />
           </Route>
         </Route>
       </Route>
