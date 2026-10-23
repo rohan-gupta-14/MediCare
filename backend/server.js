@@ -53,7 +53,8 @@ app.use('/api/patients', require('./routes/patient.routes'));
 app.use('/api/doctors', require('./routes/doctor.routes'));
 // Phase 15
 app.use('/api/departments', require('./routes/department.routes'));
-// Phase 16: app.use('/api/appointments', require('./routes/appointment.routes'));
+// Phase 16
+app.use('/api/appointments', require('./routes/appointment.routes'));
 // Phase 21: app.use('/api/medical-records', require('./routes/medicalRecord.routes'));
 // Phase 23: app.use('/api/prescriptions', require('./routes/prescription.routes'));
 // Phase 25: app.use('/api/medicines', require('./routes/medicine.routes'));
@@ -102,11 +103,24 @@ const startServer = async () => {
     console.warn('⚠️  Starting WITHOUT database — data features (Phase 05+) will fail until MONGO_URI is set.');
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`✅ MediCare API running on http://localhost:${PORT}`);
     console.log(`🌿 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🗄️  Database: ${DB_STATES[mongoose.connection.readyState]}`);
     console.log(`❤️  Health check: http://localhost:${PORT}/api/health`);
+  });
+
+  // Without a listener, a bind failure (e.g. a leftover server still holding
+  // the port) crashes as an unhandled 'error' event with a raw stack trace.
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use.`);
+      console.error(`   Another server (or a leftover process) is already running on port ${PORT}.`);
+      console.error(`   Stop that process, or start on another port:  PORT=5001 npm run dev`);
+    } else {
+      console.error(`❌ Server failed to start: ${err.message}`);
+    }
+    process.exit(1);
   });
 };
 
