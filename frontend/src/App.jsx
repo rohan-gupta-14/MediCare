@@ -8,6 +8,8 @@ import Patients from './pages/Patients';
 import PatientDetails from './pages/PatientDetails';
 import Doctors from './pages/Doctors';
 import DoctorDetails from './pages/DoctorDetails';
+import Departments from './pages/Departments';
+import DepartmentDetails from './pages/DepartmentDetails';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 import RequireRole from './components/RequireRole';
@@ -74,6 +76,13 @@ const App = () => {
           <Route element={<RequireRole roles={['admin']} />}>
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/doctors/:id" element={<DoctorDetails />} />
+          </Route>
+
+          {/* Phase 15 — department management. Admin-only: the Phase 08
+              matrix grants departments:* to admin alone. */}
+          <Route element={<RequireRole roles={['admin']} />}>
+            <Route path="/departments" element={<Departments />} />
+            <Route path="/departments/:id" element={<DepartmentDetails />} />
           </Route>
         </Route>
       </Route>

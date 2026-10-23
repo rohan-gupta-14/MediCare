@@ -51,7 +51,8 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/patients', require('./routes/patient.routes'));
 // Phase 13
 app.use('/api/doctors', require('./routes/doctor.routes'));
-// Phase 15: app.use('/api/departments', require('./routes/department.routes'));
+// Phase 15
+app.use('/api/departments', require('./routes/department.routes'));
 // Phase 16: app.use('/api/appointments', require('./routes/appointment.routes'));
 // Phase 21: app.use('/api/medical-records', require('./routes/medicalRecord.routes'));
 // Phase 23: app.use('/api/prescriptions', require('./routes/prescription.routes'));

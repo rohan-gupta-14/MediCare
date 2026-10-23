@@ -53,7 +53,8 @@ export const NAV_SECTIONS = [
       { module: 'patients', path: '/patients', icon: Users, enabled: true },
       // Phase 14 — doctor management is live (admin-only per the RBAC matrix)
       { module: 'doctors', path: '/doctors', icon: Stethoscope, enabled: true },
-      { module: 'departments', path: '/departments', icon: Building2 },
+      // Phase 15 — department management is live (admin-only per the RBAC matrix)
+      { module: 'departments', path: '/departments', icon: Building2, enabled: true },
       { module: 'appointments', path: '/appointments', icon: CalendarDays },
     ],
   },
