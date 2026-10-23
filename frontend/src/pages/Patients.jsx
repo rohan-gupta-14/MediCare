@@ -2,7 +2,7 @@
  * Patients — Patient management list (Phase 12)
  *
  * - Server-driven table: search (debounced), gender + blood-group filters,
- *   pagination — all via GET /api/patients (Phase 11).
+ *   sort order, pagination — all via GET /api/patients (Phase 11).
  * - Add / Edit via PatientFormModal, delete via ConfirmDialog — only when
  *   the role holds `patients:write` (UI mirror of the Phase 08 matrix;
  *   the API enforces it again).
@@ -27,6 +27,18 @@ const GENDERS = [
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
 ];
+
+// Sort keys must exist in the backend SORTS whitelist (patient.controller.js)
+const SORT_OPTIONS = [
+  { value: '-createdAt', label: 'Newest first' },
+  { value: 'createdAt', label: 'Oldest first' },
+  { value: 'name', label: 'Name A–Z' },
+  { value: '-name', label: 'Name Z–A' },
+  { value: 'dateOfBirth', label: 'Date of birth (oldest)' },
+  { value: '-dateOfBirth', label: 'Date of birth (youngest)' },
+];
+
+const DEFAULT_SORT = '-createdAt';
 
 /** Pure request helper (no state) — safe to call from the effect. */
 const requestPatients = (params) => api.get('/patients', { params });
@@ -58,6 +70,7 @@ const Patients = () => {
   const [q, setQ] = useState('');
   const [gender, setGender] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
+  const [sort, setSort] = useState(DEFAULT_SORT);
   const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -94,8 +107,9 @@ const Patients = () => {
       ...(q && { q }),
       ...(gender && { gender }),
       ...(bloodGroup && { bloodGroup }),
+      ...(sort !== DEFAULT_SORT && { sort }),
     }),
-    [page, q, gender, bloodGroup]
+    [page, q, gender, bloodGroup, sort]
   );
 
   // Fetch on mount + every query change. The chain is inline in the effect
@@ -137,7 +151,7 @@ const Patients = () => {
     }
   }, [params]);
 
-  const filtersActive = Boolean(q || gender || bloodGroup);
+  const filtersActive = Boolean(q || gender || bloodGroup || sort !== DEFAULT_SORT);
 
   const clearFilters = () => {
     setLoading(true);
@@ -145,6 +159,7 @@ const Patients = () => {
     setQ('');
     setGender('');
     setBloodGroup('');
+    setSort(DEFAULT_SORT);
     setPage(1);
   };
 
@@ -152,13 +167,14 @@ const Patients = () => {
     setModalOpen(false);
     setEditing(null);
     showToast('success', mode === 'created' ? `${patient.name} added` : 'Changes saved');
-    if (mode === 'created' && (q || gender || bloodGroup || page !== 1)) {
+    if (mode === 'created' && (q || gender || bloodGroup || sort !== DEFAULT_SORT || page !== 1)) {
       // Reset the view so the freshly created (newest-first) row is visible
       setLoading(true);
       setSearchTerm('');
       setQ('');
       setGender('');
       setBloodGroup('');
+      setSort(DEFAULT_SORT);
       setPage(1);
     } else {
       setLoading(true);
@@ -265,6 +281,23 @@ const Patients = () => {
           {BLOOD_GROUPS.map((b) => (
             <option key={b} value={b}>
               {b}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={sort}
+          onChange={(e) => {
+            setLoading(true);
+            setSort(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Sort patients"
+          className={selectClass}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              Sort: {o.label}
             </option>
           ))}
         </select>

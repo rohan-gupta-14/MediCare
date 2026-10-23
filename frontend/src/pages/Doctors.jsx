@@ -3,8 +3,8 @@
  *
  * - Card grid (default) + table view toggle — both are spec deliverables
  *   ("doctor cards" + "doctor table").
- * - Server-driven: debounced search, specialization filter, pagination —
- *   all via GET /api/doctors (Phase 13).
+ * - Server-driven: debounced search, specialization filter, sort order,
+ *   pagination — all via GET /api/doctors (Phase 13).
  * - Add / Edit via DoctorFormModal, delete via ConfirmDialog.
  * - Route is admin-only (RequireRole in App.jsx): the Phase 08 matrix gives
  *   admin the sole `doctors:*` grants, so no in-page gating is needed.
@@ -37,6 +37,20 @@ import DoctorFormModal from '../components/DoctorFormModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const PAGE_SIZE = 12;
+
+// Sort keys must exist in the backend SORTS whitelist (doctor.controller.js)
+const SORT_OPTIONS = [
+  { value: '-createdAt', label: 'Newest first' },
+  { value: 'createdAt', label: 'Oldest first' },
+  { value: 'name', label: 'Name A–Z' },
+  { value: '-name', label: 'Name Z–A' },
+  { value: '-experience', label: 'Experience: high to low' },
+  { value: 'experience', label: 'Experience: low to high' },
+  { value: 'consultationFee', label: 'Fee: low to high' },
+  { value: '-consultationFee', label: 'Fee: high to low' },
+];
+
+const DEFAULT_SORT = '-createdAt';
 
 /** Pure request helper (no state) — safe to call from the effect. */
 const requestDoctors = (params) => api.get('/doctors', { params });
@@ -160,6 +174,7 @@ const Doctors = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [q, setQ] = useState('');
   const [specialization, setSpecialization] = useState('');
+  const [sort, setSort] = useState(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [view, setView] = useState('cards');
 
@@ -196,8 +211,9 @@ const Doctors = () => {
       limit: PAGE_SIZE,
       ...(q && { q }),
       ...(specialization && { specialization }),
+      ...(sort !== DEFAULT_SORT && { sort }),
     }),
-    [page, q, specialization]
+    [page, q, specialization, sort]
   );
 
   // Fetch on mount + every query change (inline chain — see file header).
@@ -236,13 +252,14 @@ const Doctors = () => {
     }
   }, [params]);
 
-  const filtersActive = Boolean(q || specialization);
+  const filtersActive = Boolean(q || specialization || sort !== DEFAULT_SORT);
 
   const clearFilters = () => {
     setLoading(true);
     setSearchTerm('');
     setQ('');
     setSpecialization('');
+    setSort(DEFAULT_SORT);
     setPage(1);
   };
 
@@ -250,12 +267,13 @@ const Doctors = () => {
     setModalOpen(false);
     setEditing(null);
     showToast('success', mode === 'created' ? `${doctor.name} added` : 'Changes saved');
-    if (mode === 'created' && (q || specialization || page !== 1)) {
+    if (mode === 'created' && (q || specialization || sort !== DEFAULT_SORT || page !== 1)) {
       // Reset the view so the freshly created (newest-first) card is visible
       setLoading(true);
       setSearchTerm('');
       setQ('');
       setSpecialization('');
+      setSort(DEFAULT_SORT);
       setPage(1);
     } else {
       setLoading(true);
@@ -365,6 +383,23 @@ const Doctors = () => {
           {SPECIALIZATIONS.map((s) => (
             <option key={s} value={s}>
               {s}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={sort}
+          onChange={(e) => {
+            setLoading(true);
+            setSort(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Sort doctors"
+          className={selectClass}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              Sort: {o.label}
             </option>
           ))}
         </select>
