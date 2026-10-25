@@ -58,6 +58,8 @@ app.use('/api/appointments', require('./routes/appointment.routes'));
 // Phase 17
 // Phase 18
 // Phase 21
+// Phase 22
+app.use('/api/lab-tests', require('./routes/labTest.routes'));
 app.use('/api/prescriptions', require('./routes/prescription.routes'));
 app.use('/api/medical-records', require('./routes/medicalRecord.routes'));
 app.use('/api/admissions', require('./routes/admission.routes'));
